@@ -15,33 +15,6 @@
 using std::filesystem::create_directories, std::filesystem::directory_iterator,
     std::filesystem::recursive_directory_iterator, std::ifstream, std::ofstream, std::regex, std::regex_error;
 
-SourceDirectory::SourceDirectory(const string &sourceDirectory_, string regex_, const bool recursive_)
-    : sourceDirectory{Node::getNodeFromNonNormalizedPath(sourceDirectory_, false)}, regex{std::move(regex_)},
-      recursive(recursive_)
-{
-}
-
-bool InclNodePointerComparator::operator()(const InclNode &lhs, const InclNode &rhs) const
-{
-    return lhs.node < rhs.node;
-}
-
-RequireNameTargetId::RequireNameTargetId(const uint64_t id_, string_view requireName_)
-    : id(id_), requireName(requireName_)
-{
-}
-
-bool RequireNameTargetId::operator==(const RequireNameTargetId &other) const
-{
-    return id == other.id && requireName == other.requireName;
-}
-
-uint64_t RequireNameTargetIdHash::operator()(const RequireNameTargetId &req) const
-{
-    const uint64_t hash[2] = {rapidhash(req.requireName.c_str(), req.requireName.size()), req.id};
-    return rapidhash(&hash, sizeof(hash));
-}
-
 HeaderFileOrUnit::HeaderFileOrUnit(SMFile *smFile_, const bool isSystem_)
     : data{.smFile = smFile_}, isUnit(true), isSystem(isSystem_)
 {
@@ -324,7 +297,6 @@ void CppSourceTarget::addHeaderUnit(const Node *headerNode, const string &logica
                                     const bool addInReq, const bool addInUseReq, const bool isStandard,
                                     const bool ignoreHeaderDeps)
 {
-    return addHeaderFile(headerNode, logicalName, suppressError, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
     string *p = new string(logicalName);
     lowerCaseOnWindows(p->data(), p->size());
     for (const SMFile *smFile : huDeps)
@@ -1078,7 +1050,7 @@ CppSourceTarget &CppSourceTarget::interfaceCompileDefinition(const string &cddNa
     return *this;
 }
 
-void CppSourceTarget::parseRegexSourceDirs(bool assignToSourceNodes, const string &sourceDirectory, string regex,
+void CppSourceTarget::parseRegexSourceDirs(bool assignToSourceNodes, const string &sourceDirectory, string regexStr,
                                            const bool recursive)
 {
     if (configuration->evaluate(TreatModuleAsSource::YES))
@@ -1092,9 +1064,8 @@ void CppSourceTarget::parseRegexSourceDirs(bool assignToSourceNodes, const strin
         return;
     }
 
-    const SourceDirectory dir{sourceDirectory, std::move(regex), recursive};
     auto addNewFile = [&](const auto &k) {
-        if (k.is_regular_file() && regex_match(k.path().filename().string(), std::regex(dir.regex)))
+        if (k.is_regular_file() && regex_match(k.path().filename().string(), std::regex(regexStr)))
         {
             Node *node = Node::getNodeFromNonNormalizedPath(k.path(), true);
             if (assignToSourceNodes)
@@ -1110,14 +1081,14 @@ void CppSourceTarget::parseRegexSourceDirs(bool assignToSourceNodes, const strin
 
     if (recursive)
     {
-        for (const auto &k : recursive_directory_iterator(path(dir.sourceDirectory->filePath)))
+        for (const auto &k : recursive_directory_iterator(path(sourceDirectory)))
         {
             addNewFile(k);
         }
     }
     else
     {
-        for (const auto &k : directory_iterator(path(dir.sourceDirectory->filePath)))
+        for (const auto &k : directory_iterator(path(sourceDirectory)))
         {
             addNewFile(k);
         }
@@ -1311,92 +1282,6 @@ string CppSourceTarget::getDependenciesString() const
         deps += cppSourceTarget->name + '\n';
     }
     return deps;
-}
-
-void CppSourceTarget::resolveRequirePaths()
-{
-    for (uint32_t i = 0; i < modFileDeps.size(); ++i)
-    {
-        SMFile *smFile = modFileDeps[i];
-
-        for (auto &[fullPath, logicalName] : smFile->smRulesCache.moduleArray)
-        {
-            if (logicalName == smFile->logicalName)
-            {
-                printErrorMessage(FORMAT("In target\n{}\nModule\n{}\n can not depend on itself.\n", getPrintName(),
-                                         smFile->node->filePath));
-            }
-
-            const SMFile *found = nullptr;
-
-            // Even if found, we continue the search to ensure that no two files are providing the same module in
-            // the module-files of the target and its dependencies
-            RequireNameTargetId req(id, logicalName);
-
-            const bool isInterface = req.requireName.contains(':');
-
-            using Map = decltype(requirePaths2);
-            if (requirePaths2.if_contains(
-                    req, [&](const Map::value_type &value) { found = const_cast<SMFile *>(value.second); }))
-            {
-            }
-
-            // An interface module is searched only in the module files of the current target.
-            if (!isInterface)
-            {
-                const SMFile *found2 = nullptr;
-                for (CppSourceTarget *cppSourceTarget : reqDeps)
-                {
-                    req.id = cppSourceTarget->id;
-
-                    if (requirePaths2.if_contains(
-                            req, [&](const Map::value_type &value) { found2 = const_cast<SMFile *>(value.second); }))
-                    {
-                        if (found)
-                        {
-                            // Module was already found so error-out
-                            printErrorMessage(
-                                FORMAT("Module name:\n {}\n Is Being Provided By 2 different files:\n1){}\n"
-                                       "from target\n{}\n2){}\n from target\n{}\n",
-                                       getPrintName(), getDependenciesString(), logicalName, found->node->filePath,
-                                       found->node->filePath));
-                        }
-                        found = found2;
-                    }
-                }
-            }
-
-            if (found)
-            {
-                /*smFile->addDepLater(const_cast<SMFile &>(*found));
-                if (!smFile->fileStatus && !atomic_ref(smFile->fileStatus).load())
-                {
-                    if (fullPath != found->objectNode)
-                    {
-                        atomic_ref(smFile->fileStatus).store(true);
-                    }
-                }
-                BuildCache::Cpp::ModuleFile::SmRules::SingleModuleDep dep;
-                dep.logicalName = logicalName;
-                dep.node = found->objectNode;
-                fullPath = found->objectNode;*/
-            }
-            else
-            {
-                if (isInterface)
-                {
-                    printErrorMessage(
-                        FORMAT("No File in the target\n{}\n provides this module\n{}.\n", getPrintName(), logicalName));
-                }
-                else
-                {
-                    printErrorMessage(
-                        FORMAT("No File in the target\n{}\n or in its dependencies\n{}\n provides this module\n{}.\n",
-                               getPrintName(), getDependenciesString(), logicalName));
-                }
-            }
-        }
-    }
 }
 
 string CppSourceTarget::getInfrastructureFlags(const Compiler &compiler)

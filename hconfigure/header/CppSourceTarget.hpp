@@ -27,33 +27,6 @@ import <set>;
 
 using std::same_as;
 
-struct SourceDirectory
-{
-    const Node *sourceDirectory;
-    string regex;
-    bool recursive;
-    SourceDirectory(const string &sourceDirectory_, string regex_, bool recursive_ = false);
-};
-
-struct InclNodePointerComparator
-{
-    bool operator()(const InclNode &lhs, const InclNode &rhs) const;
-};
-
-struct RequireNameTargetId
-{
-    uint64_t id;
-    string requireName;
-    RequireNameTargetId(uint64_t id_, string_view requirePath_);
-    bool operator==(const RequireNameTargetId &other) const;
-};
-
-struct RequireNameTargetIdHash
-{
-    uint64_t operator()(const RequireNameTargetId &req) const;
-};
-inline phmap::parallel_flat_hash_map_m<RequireNameTargetId, SMFile *, RequireNameTargetIdHash> requirePaths2;
-
 struct HeaderFileOrUnit
 {
     union {
@@ -130,7 +103,6 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     string &getSourceCompileCommandPrintFirstHalf();
 
     string getDependenciesString() const;
-    void resolveRequirePaths();
     static string getInfrastructureFlags(const Compiler &compiler);
     string getCompileCommandPrintSecondPart(const SourceNode &sourceNode) const;
     string getCompileCommandPrintSecondPartSMRule(const SMFile &smFile) const;
@@ -241,7 +213,7 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     CppSourceTarget &privateHeaderUnits(const string &headerUnit, const string &logicalName, U... headerUnitsString);
     template <typename... U>
     CppSourceTarget &interfaceHeaderUnits(const string &headerUnit, const string &logicalName, U... headerUnitsString);
-    void parseRegexSourceDirs(bool assignToSourceNodes, const string &sourceDirectory, string regex, bool recursive);
+    void parseRegexSourceDirs(bool assignToSourceNodes, const string &sourceDirectory, string regexStr, bool recursive);
     template <typename... U> CppSourceTarget &sourceFiles(const string &srcFile, U... sourceFileString);
     template <typename... U> CppSourceTarget &sourceDirs(const string &sourceDirectory, U... dirs);
     template <typename... U>
