@@ -473,6 +473,17 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
         btcNonModule.logicalNames.emplace_back(str);
     }
 
+    if (!firstMessageSent)
+    {
+        firstMessageSent = true;
+        for (const auto &[str, node] : headerFilesModule)
+        {
+            // emplace in header-files to send
+            N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .user = true};
+            btcNonModule.headerFiles.emplace_back(std::move(h));
+        }
+    }
+
     for (SMFile *smFile : hu.allSMFileDependencies)
     {
         if (allSMFileDependencies.emplace(smFile).second)
@@ -574,13 +585,13 @@ SMFile *SMFile::findModule(const string &moduleName) const
     return found;
 }
 
-HeaderFileOrUnit *SMFile::findHeaderFileOrUnit(const string &headerName)
+HeaderFileOrUnit SMFile::findHeaderFileOrUnit(const string &headerName)
 {
-    HeaderFileOrUnit *found = nullptr;
+    HeaderFileOrUnit found;
     CppSourceTarget *foundTarget = nullptr;
     if (const auto &it = target->reqHeaderNameMapping.find(headerName); it != target->reqHeaderNameMapping.end())
     {
-        found = &it->second;
+        found = it->second;
         foundTarget = target;
     }
 
@@ -588,12 +599,23 @@ HeaderFileOrUnit *SMFile::findHeaderFileOrUnit(const string &headerName)
     {
         if (const auto &it = t->useReqHeaderNameMapping.find(headerName); it != t->useReqHeaderNameMapping.end())
         {
-            if (found)
+            if (found.data.smFile)
             {
-                duplicateHeaderFileOrUnitError(headerName, *found, it->second, foundTarget, t);
+                duplicateHeaderFileOrUnitError(headerName, found, it->second, foundTarget, t);
             }
-            found = &it->second;
+            found = it->second;
             foundTarget = t;
+        }
+    }
+
+    // Checking if this is a big header-unit with composing header-files. Composing headers should be included in the
+    // big header with same logical-name as they are meant to be used in other files. So we can use the same headerName
+    // to search whether we have a composing header specified. Otherwise, it would be a cyclic dependency.
+    if (found.data.smFile == this && !firstMessageSent)
+    {
+        if (const auto it = headerFilesModule.find(headerName); it != headerFilesModule.end())
+        {
+            return {it->second, false};
         }
     }
 
@@ -662,17 +684,17 @@ bool SMFile::build(Builder &builder)
             {
                 auto &[isHURequested, headerName] = reinterpret_cast<N2978::CTBNonModule &>(buffer);
 
-                const HeaderFileOrUnit *f = findHeaderFileOrUnit(headerName);
-                if (!f)
+                const HeaderFileOrUnit f = findHeaderFileOrUnit(headerName);
+                if (!f.data.smFile)
                 {
                     printErrorMessage(
                         FORMAT("No File in the target\n{}\n or in its dependencies\n{}\n provides this header \n{}.\n",
                                target->name, target->getDependenciesString(), headerName));
                 }
 
-                if (f->isUnit)
+                if (f.isUnit)
                 {
-                    found = f->data.smFile;
+                    found = f.data.smFile;
                 }
                 else
                 {
@@ -684,16 +706,42 @@ bool SMFile::build(Builder &builder)
                     }
                     N2978::BTCNonModule response;
 
-                    response.filePath = f->data.node->filePath;
+                    response.filePath = f.data.node->filePath;
                     response.isHeaderUnit = false;
-                    response.user = !f->isSystem;
+                    response.user = !f.isSystem;
 
-                    headerFiles.emplace(f->data.node);
+                    if (!firstMessageSent)
+                    {
+                        firstMessageSent = true;
+                        for (const auto &[str, node] : headerFilesModule)
+                        {
+                            if (node == f.data.node)
+                            {
+                                headerFiles.emplace(f.data.node);
+                                continue;
+                            }
+
+                            // emplace in header-files to send
+                            N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .user = true};
+                            response.headerFiles.emplace_back(std::move(h));
+                            headerFiles.emplace(f.data.node);
+                        }
+                    }
+                    else
+                    {
+                        if (!headerFilesModule.emplace(headerName, f.data.node).second)
+                        {
+                            printErrorMessage(
+                                FORMAT("A header-file already sent re-requested.\n{}\n", f.data.node->filePath));
+                        }
+                        headerFiles.emplace(f.data.node);
+                    }
+
                     if (const auto &r2 = ipcManager->sendMessage(response); !r2)
                     {
                         printErrorMessage(
                             FORMAT("send-message fail of header-file {}\n for module-file {}\n of target {}\n.",
-                                   f->data.node->filePath, node->filePath, target->name));
+                                   f.data.node->filePath, node->filePath, target->name));
                     }
 
                     continue;

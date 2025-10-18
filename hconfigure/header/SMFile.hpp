@@ -99,6 +99,7 @@ struct SMFile : SourceNode // Scanned Module Rule
     flat_hash_set<SMFile *> allSMFileDependencies;
     vector<string> logicalNames;
     vector<Node *> *headerFilesCache;
+    flat_hash_map<string, Node *> headerFilesModule;
     Node *interfaceNode;
     SMFile *waitingFor = nullptr;
 
@@ -115,6 +116,7 @@ struct SMFile : SourceNode // Scanned Module Rule
     bool isUseReqDep = false;
     bool isSystem = false;
     bool compileCommandChanged = false;
+    bool firstMessageSent = false;
 
     // Whether to set ignoreHeaderDeps to true for HeaderUnits which come from such Node includes for which
     // ignoreHeaderDeps is true
@@ -130,7 +132,7 @@ struct SMFile : SourceNode // Scanned Module Rule
                                         HeaderFileOrUnit &second, CppSourceTarget *firstTarget,
                                         CppSourceTarget *secondTarget);
     SMFile *findModule(const string &moduleName) const;
-    HeaderFileOrUnit *findHeaderFileOrUnit(const string &headerName);
+    HeaderFileOrUnit findHeaderFileOrUnit(const string &headerName);
     bool build(Builder &builder);
     void updateBTarget(Builder &builder, unsigned short round, bool &isComplete) override;
     string getOutputFileName() const;

@@ -57,13 +57,14 @@ inline phmap::parallel_flat_hash_map_m<RequireNameTargetId, SMFile *, RequireNam
 struct HeaderFileOrUnit
 {
     union {
-        SMFile *smFile;
+        SMFile *smFile = nullptr;
         Node *node;
     } data;
     bool isUnit;
     bool isSystem;
-    explicit HeaderFileOrUnit(SMFile *smFile_, bool isSystem_);
-    explicit HeaderFileOrUnit(Node *node_, bool isSystem_);
+    HeaderFileOrUnit(SMFile *smFile_, bool isSystem_);
+    HeaderFileOrUnit(Node *node_, bool isSystem_);
+    HeaderFileOrUnit() = default;
 };
 
 enum class FileType : uint8_t
@@ -154,8 +155,10 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
 
     void actuallyAddSourceFileConfigTime(Node *node);
     void actuallyAddModuleFileConfigTime(Node *node, string exportName);
-    void addHeaderFile(Node *headerNode, const string &logicalName, bool suppressError, bool addInReq, bool addInUseReq,
-                       bool isStandard, bool ignoreHeaderDeps);
+    void removeHeaderFile(const Node *headerNode, const string &logicalName, bool addInReq, bool addInUseReq);
+    void removeHeaderUnit(const Node *headerNode, const string &logicalName, bool addInReq, bool addInUseReq);
+    void addHeaderFile(const Node *headerNode, const string &logicalName, bool suppressError, bool addInReq,
+                       bool addInUseReq, bool isStandard, bool ignoreHeaderDeps);
     void addHeaderUnit(const Node *headerNode, const string &logicalName, bool suppressError, bool addInReq,
                        bool addInUseReq, bool isStandard, bool ignoreHeaderDeps);
     void addHeaderUnitOrFileDir(const Node *includeDir, const string &prefix, bool isHeaderFile, const string &regexStr,
@@ -182,7 +185,7 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     template <typename... U> CppSourceTarget &privateHUIncludes(const string &include, U... includeDirectoryString);
     template <typename... U> CppSourceTarget &interfaceHUIncludes(const string &include, U... includeDirectoryString);
     template <typename... U>
-    CppSourceTarget &publicIncludeRE(const string &include, const string &regexStr, U... includeDirectoryString);
+    CppSourceTarget &publicIncludesRE(const string &include, const string &regexStr, U... includeDirectoryString);
     template <typename... U>
     CppSourceTarget &privateIncludesRE(const string &include, const string &regexStr, U... includeDirectoryString);
     template <typename... U>
@@ -441,8 +444,8 @@ CppSourceTarget &CppSourceTarget::interfaceHUIncludes(const string &include, U..
 }
 
 template <typename... U>
-CppSourceTarget &CppSourceTarget::publicIncludeRE(const string &include, const string &regexStr,
-                                                  U... includeDirectoryString)
+CppSourceTarget &CppSourceTarget::publicIncludesRE(const string &include, const string &regexStr,
+                                                   U... includeDirectoryString)
 {
     if constexpr (bsMode == BSMode::CONFIGURE)
     {
@@ -453,7 +456,7 @@ CppSourceTarget &CppSourceTarget::publicIncludeRE(const string &include, const s
 
     if constexpr (sizeof...(includeDirectoryString))
     {
-        return publicIncludesRE(include, includeDirectoryString...);
+        return publicIncludesRE(includeDirectoryString...);
     }
     else
     {

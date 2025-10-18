@@ -239,22 +239,83 @@ static void emplaceInNodesType(flat_hash_map<const Node *, FileType> &nodesType,
     }
 }
 
-void CppSourceTarget::addHeaderFile(Node *headerNode, const string &logicalName, const bool suppressError,
+void CppSourceTarget::removeHeaderFile(const Node *headerNode, const string &logicalName, const bool addInReq,
+                                       const bool addInUseReq)
+{
+    string *p = new string(logicalName);
+    if (headerNode->filePath.contains("workaround.hpp"))
+    {
+        bool breakpoint = true;
+    }
+    lowerCaseOnWindows(p->data(), p->size());
+    if (addInReq)
+    {
+        reqHeaderNameMapping.erase(*p);
+        reqNodesType.erase(headerNode);
+    }
+
+    if (addInUseReq)
+    {
+        useReqHeaderNameMapping.erase(*p);
+        useReqNodesType.erase(headerNode);
+    }
+}
+
+void CppSourceTarget::removeHeaderUnit(const Node *headerNode, const string &logicalName, const bool addInReq,
+                                       const bool addInUseReq)
+{
+    string *p = new string(logicalName);
+    lowerCaseOnWindows(p->data(), p->size());
+    bool found = false;
+    for (auto it = huDeps.begin(); it != huDeps.end(); ++it)
+    {
+        if ((*it)->node == headerNode)
+        {
+            huDeps.erase(it);
+            found = true;
+            break;
+        }
+    }
+
+    if (!found)
+    {
+        printErrorMessage(
+            FORMAT("Could not find the header-unit {}\n with logical-name {}\n in target {}\n to delete.\n",
+                   headerNode->filePath, logicalName, name));
+    }
+
+    if (addInReq)
+    {
+        reqNodesType.erase(headerNode);
+    }
+
+    if (addInUseReq)
+    {
+        useReqNodesType.erase(headerNode);
+    }
+}
+
+void CppSourceTarget::addHeaderFile(const Node *headerNode, const string &logicalName, const bool suppressError,
                                     const bool addInReq, const bool addInUseReq, const bool isStandard,
                                     const bool ignoreHeaderDeps)
 {
     string *p = new string(logicalName);
+    if (headerNode->filePath.contains("workaround.hpp"))
+    {
+        bool breakpoint = true;
+    }
     lowerCaseOnWindows(p->data(), p->size());
     if (addInReq)
     {
-        emplaceInHeaderNameMapping(reqHeaderNameMapping, *p, HeaderFileOrUnit{headerNode, isStandard}, suppressError);
+        emplaceInHeaderNameMapping(reqHeaderNameMapping, *p,
+                                   HeaderFileOrUnit{const_cast<Node *>(headerNode), isStandard}, suppressError);
         emplaceInNodesType(reqNodesType, headerNode, FileType::HEADER_FILE);
     }
 
     if (addInUseReq)
     {
-        emplaceInHeaderNameMapping(useReqHeaderNameMapping, *p, HeaderFileOrUnit{headerNode, isStandard},
-                                   suppressError);
+        emplaceInHeaderNameMapping(useReqHeaderNameMapping, *p,
+                                   HeaderFileOrUnit{const_cast<Node *>(headerNode), isStandard}, suppressError);
         emplaceInNodesType(useReqNodesType, headerNode, FileType::HEADER_FILE);
     }
 }
@@ -263,6 +324,7 @@ void CppSourceTarget::addHeaderUnit(const Node *headerNode, const string &logica
                                     const bool addInReq, const bool addInUseReq, const bool isStandard,
                                     const bool ignoreHeaderDeps)
 {
+    return addHeaderFile(headerNode, logicalName, suppressError, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
     string *p = new string(logicalName);
     lowerCaseOnWindows(p->data(), p->size());
     for (const SMFile *smFile : huDeps)
@@ -827,6 +889,14 @@ void CppSourceTarget::writeCacheAtConfigTime()
         {
             writeStringView(*configBuffer, hu->logicalNames[i]);
         }
+
+        writeUint32(*configBuffer, hu->headerFilesModule.size());
+        for (const auto &[headerName, headerNode] : hu->headerFilesModule)
+        {
+            writeStringView(*configBuffer, headerName);
+            writeNode(*configBuffer, headerNode);
+        }
+
         writeBool(*configBuffer, hu->isReqDep);
         writeBool(*configBuffer, hu->isUseReqDep);
         writeBool(*configBuffer, hu->isSystem);
@@ -912,6 +982,15 @@ void CppSourceTarget::readConfigCacheAtBuildTime()
         {
             hu->logicalNames.emplace_back(readStringView(ptr, configRead));
         }
+
+        const uint32_t headerFileModuleSize = readUint32(ptr, configRead);
+        for (uint32_t j = 0; j < headerFileModuleSize; ++j)
+        {
+            string_view headerFileName = readStringView(ptr, configRead);
+            Node *headerNode = readHalfNode(ptr, configRead);
+            hu->headerFilesModule.emplace(headerFileName, headerNode);
+        }
+
         hu->isReqDep = readBool(ptr, configRead);
         hu->isUseReqDep = readBool(ptr, configRead);
         hu->isSystem = readBool(ptr, configRead);
