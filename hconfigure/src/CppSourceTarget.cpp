@@ -15,6 +15,116 @@
 using std::filesystem::create_directories, std::filesystem::directory_iterator,
     std::filesystem::recursive_directory_iterator, std::ifstream, std::ofstream, std::regex, std::regex_error;
 
+void CppSourceTarget::readModuleMapFromDir(const string &dir)
+{
+    const string modeStrs[] = {
+        "public-header-files",  "private-header-files",   "interface-header-files", "public-header-units",
+        "private-header-units", "interface-header-units", "interface-files",        "module-files",
+    };
+
+    string str = fileToString(dir + "module-map.txt");
+    uint32_t start = 0;
+    int currentModeIndex = -1;
+    string_view pendingLogicalName;
+
+    for (uint64_t i = str.find('\n', start); i != string::npos; start = i + 1, i = str.find('\n', start))
+    {
+        string_view line = str.substr(start, i - start);
+
+        // Skip comments and empty lines
+        if (line.starts_with("//") || line.empty())
+        {
+            continue;
+        }
+
+        // Check if this line is a mode declaration
+        bool isModeDeclaration = false;
+        for (int newModeIndex = 0; newModeIndex < 8; ++newModeIndex)
+        {
+            if (line == modeStrs[newModeIndex])
+            {
+                // Check that modes appear in order
+                if (currentModeIndex >= newModeIndex)
+                {
+                    if (currentModeIndex == newModeIndex)
+                    {
+                        printErrorMessage(FORMAT("Error: mode {} supplied twice", modeStrs[newModeIndex]));
+                    }
+                    printErrorMessage(FORMAT("Error: mode {} out of order", modeStrs[newModeIndex]));
+                }
+
+                if (!pendingLogicalName.empty())
+                {
+                    printErrorMessage(
+                        FORMAT("Error: incomplete entry - missing file path for logical name: {}", pendingLogicalName));
+                }
+
+                currentModeIndex = newModeIndex;
+                isModeDeclaration = true;
+                break;
+            }
+        }
+
+        if (isModeDeclaration)
+        {
+            continue;
+        }
+
+        // Parse data based on current mode
+        if (currentModeIndex == -1)
+        {
+            printErrorMessage(FORMAT("Error: data found before any mode declaration"));
+            return;
+        }
+
+        if (pendingLogicalName.empty())
+        {
+            pendingLogicalName = line;
+            continue;
+        }
+
+        Node *node = Node::getNodeFromNonNormalizedString(string(line), true, true);
+        if (node->fileType == file_type::not_found)
+        {
+            printErrorMessage(FORMAT("Error: file {}\n provided in mode {}\n does not exists while parsing {}\n",
+                                     node->filePath, modeStrs[currentModeIndex], dir + "module-map.txt"));
+        }
+
+        if (currentModeIndex == 0)
+        {
+            addHeaderUnit(node, string(pendingLogicalName), false, true, true, false, false);
+        }
+        else if (currentModeIndex == 1)
+        {
+            addHeaderUnit(node, string(pendingLogicalName), false, true, false, false, false);
+        }
+        else if (currentModeIndex == 2)
+        {
+            addHeaderUnit(node, string(pendingLogicalName), false, false, true, false, false);
+        }
+        else if (currentModeIndex == 3)
+        {
+            addHeaderUnit(node, string(pendingLogicalName), false, true, true, false, false);
+        }
+        else if (currentModeIndex == 4)
+        {
+            addHeaderUnit(node, string(pendingLogicalName), false, true, false, false, false);
+        }
+        else if (currentModeIndex == 5)
+        {
+            addHeaderUnit(node, string(pendingLogicalName), false, false, true, false, false);
+        }
+        else if (currentModeIndex == 6)
+        {
+            actuallyAddModuleFileConfigTime(node, string(pendingLogicalName));
+        }
+        else if (currentModeIndex == 7)
+        {
+            actuallyAddModuleFileConfigTime(node, "");
+        }
+    }
+}
+
 HeaderFileOrUnit::HeaderFileOrUnit(SMFile *smFile_, const bool isSystem_)
     : data{.smFile = smFile_}, isUnit(true), isSystem(isSystem_)
 {
@@ -515,6 +625,49 @@ void CppSourceTarget::actuallyAddInclude(const bool errorOnEmplaceFail, const No
 
             useReqIncls.emplace_back(const_cast<Node *>(include), isStandard, ignoreHeaderDeps);
         }
+    }
+}
+
+void CppSourceTarget::addModuleMap(const CppModMap &cppModMap)
+{
+    for (const auto &[logicalName, node] : cppModMap.publicHeaderFiles)
+    {
+        addHeaderFile(node, logicalName, false, true, true, false, false);
+    }
+
+    for (const auto &[logicalName, node] : cppModMap.privateHeaderFiles)
+    {
+        addHeaderFile(node, logicalName, false, true, false, false, false);
+    }
+
+    for (const auto &[logicalName, node] : cppModMap.interfaceHeaderFiles)
+    {
+        addHeaderFile(node, logicalName, false, false, true, false, false);
+    }
+
+    for (const auto &[node, logicalName] : cppModMap.publicHeaderUnits)
+    {
+        addHeaderUnit(logicalName, node, false, true, true, false, false);
+    }
+
+    for (const auto &[node, logicalName] : cppModMap.privateHeaderUnits)
+    {
+        addHeaderUnit(logicalName, node, false, true, false, false, false);
+    }
+
+    for (const auto &[node, logicalName] : cppModMap.interfaceFiles)
+    {
+        addHeaderUnit(logicalName, node, false, false, true, false, false);
+    }
+
+    for (const auto &[node, logicalName] : cppModMap.moduleFiles)
+    {
+        actuallyAddModuleFileConfigTime(logicalName, node);
+    }
+
+    for (const auto &p : cppModMap.modules)
+    {
+        actuallyAddModuleFileConfigTime(p, "");
     }
 }
 

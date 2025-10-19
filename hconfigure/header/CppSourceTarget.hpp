@@ -1,31 +1,138 @@
 #ifndef HMAKE_CPPSOURCETARGET_HPP
 #define HMAKE_CPPSOURCETARGET_HPP
-#ifdef USE_HEADER_UNITS
-import "BuildTools.hpp";
-import "Configuration.hpp";
-import "DSC.hpp";
-import "HashedCommand.hpp";
-import "JConsts.hpp";
-import "ObjectFileProducer.hpp";
-import "RunCommand.hpp";
-import "SMFile.hpp";
-import "ToolsCache.hpp";
-import <concepts>;
-import <set>;
-#else
+
 #include "BuildTools.hpp"
 #include "Configuration.hpp"
 #include "DSC.hpp"
 #include "HashedCommand.hpp"
-#include "JConsts.hpp"
 #include "ObjectFileProducer.hpp"
-#include "RunCommand.hpp"
 #include "SMFile.hpp"
-#include "ToolsCache.hpp"
 #include <concepts>
-#endif
 
 using std::same_as;
+
+enum class MFileType
+{
+    HEADER,
+    UNIT,
+    MODULE,
+    INTERFACE,
+};
+
+class CppModMap
+{
+  public:
+    flat_hash_map<string, Node *> publicHeaderFiles;
+    flat_hash_map<string, Node *> privateHeaderFiles;
+    flat_hash_map<string, Node *> interfaceHeaderFiles;
+    flat_hash_map<string, Node *> publicHeaderUnits;
+    flat_hash_map<string, Node *> privateHeaderUnits;
+    flat_hash_map<string, Node *> interfaceFiles;
+    flat_hash_set<Node *> modules;
+    flat_hash_map<string, Node *> moduleFiles;
+
+    template <typename... U> CppModMap &publicHeader(const string &logicalName, const string &filePath, U... files);
+    template <typename... U> CppModMap &privateHeader(const string &logicalName, const string &filePath, U... files);
+    template <typename... U> CppModMap &interfaceHeader(const string &logicalName, const string &filePath, U... files);
+    template <typename... U> CppModMap &publicUnit(const string &logicalName, const string &filePath, U... files);
+    template <typename... U> CppModMap &privateUnit(const string &logicalName, const string &filePath, U... files);
+    template <typename... U> CppModMap &interfaceUnit(const string &logicalName, const string &filePath, U... files);
+    template <typename... U> CppModMap &interface(const string &logicalName, const string &filePath, U... files);
+    template <typename... U> CppModMap &moduleFile(const string &filePath, U... files);
+};
+
+template <typename... U>
+CppModMap &CppModMap::publicHeader(const string &logicalName, const string &filePath, U... files)
+{
+    Node *node = Node::getNodeFromNonNormalizedPath(filePath, true);
+    publicHeaderFiles.emplace(logicalName, node);
+    if constexpr (sizeof...(files))
+    {
+        return publicHeader(files...);
+    }
+    return static_cast<CppModMap &>(*this);
+}
+
+template <typename... U>
+CppModMap &CppModMap::privateHeader(const string &logicalName, const string &filePath, U... files)
+{
+    Node *node = Node::getNodeFromNonNormalizedPath(filePath, true);
+    privateHeaderFiles.emplace(logicalName, node);
+    if constexpr (sizeof...(files) > 0)
+    {
+        return privateHeader(files...);
+    }
+    return *this;
+}
+
+template <typename... U>
+CppModMap &CppModMap::interfaceHeader(const string &logicalName, const string &filePath, U... files)
+{
+    Node *node = Node::getNodeFromNonNormalizedPath(filePath, true);
+    interfaceHeaderFiles.emplace(logicalName, node);
+    if constexpr (sizeof...(files) > 0)
+    {
+        return interfaceHeader(files...);
+    }
+    return *this;
+}
+
+template <typename... U> CppModMap &CppModMap::publicUnit(const string &logicalName, const string &filePath, U... files)
+{
+    Node *node = Node::getNodeFromNonNormalizedPath(filePath, true);
+    publicHeaderUnits.emplace(logicalName, node);
+    if constexpr (sizeof...(files) > 0)
+    {
+        return publicUnit(files...);
+    }
+    return *this;
+}
+
+template <typename... U>
+CppModMap &CppModMap::privateUnit(const string &logicalName, const string &filePath, U... files)
+{
+    Node *node = Node::getNodeFromNonNormalizedPath(filePath, true);
+    privateHeaderUnits.emplace(logicalName, node);
+    if constexpr (sizeof...(files) > 0)
+    {
+        return privateUnit(files...);
+    }
+    return *this;
+}
+
+template <typename... U>
+CppModMap &CppModMap::interfaceUnit(const string &logicalName, const string &filePath, U... files)
+{
+    Node *node = Node::getNodeFromNonNormalizedPath(filePath, true);
+    interfaceFiles.emplace(logicalName, node);
+    if constexpr (sizeof...(files) > 0)
+    {
+        return interfaceUnit(files...);
+    }
+    return *this;
+}
+
+template <typename... U> CppModMap &CppModMap::interface(const string &logicalName, const string &filePath, U... files)
+{
+    Node *node = Node::getNodeFromNonNormalizedPath(filePath, true);
+    interfaceFiles.emplace(logicalName, node);
+    if constexpr (sizeof...(files) > 0)
+    {
+        return interface(files...);
+    }
+    return *this;
+}
+
+template <typename... U> CppModMap &CppModMap::moduleFile(const string &filePath, U... files)
+{
+    Node *node = Node::getNodeFromNonNormalizedPath(filePath, true);
+    moduleFiles.emplace(node);
+    if constexpr (sizeof...(files) > 0)
+    {
+        return moduleFile(files...);
+    }
+    return *this;
+}
 
 struct HeaderFileOrUnit
 {
@@ -141,6 +248,8 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     uint64_t actuallyAddBigHuConfigTime(const Node *node, const string &headerUnit);
     void actuallyAddInclude(bool errorOnEmplaceFail, const Node *include, bool addInReq, bool addInUseReq,
                             bool isStandard = false, bool ignoreHeaderDeps = false);
+    void addModuleMap(const CppModMap &cppModMap);
+    void readModuleMapFromDir(const string &dir);
 
     template <typename... U> CppSourceTarget &publicDeps(CppSourceTarget *dep, const U... deps);
     template <typename... U> CppSourceTarget &privateDeps(CppSourceTarget *dep, const U... deps);
@@ -148,8 +257,7 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
 
     template <typename... U> CppSourceTarget &deps(CppSourceTarget *dep, DepType dependency, const U... deps);
 
-    // TODO
-    // Also provide function overload for functions like publicIncludes here and in CPT
+    template <typename... U> CppSourceTarget &moduleMaps(const string &include, U... includeDirectoryString);
     template <typename... U> CppSourceTarget &publicIncludes(const string &include, U... includeDirectoryString);
     template <typename... U> CppSourceTarget &privateIncludes(const string &include, U... includeDirectoryString);
     template <typename... U> CppSourceTarget &interfaceIncludes(const string &include, U... includeDirectoryString);
@@ -293,6 +401,24 @@ CppSourceTarget &CppSourceTarget::deps(CppSourceTarget *dep, const DepType depen
         return deps(cppSourceTargets...);
     }
     return static_cast<CppSourceTarget &>(*this);
+}
+
+template <typename... U>
+CppSourceTarget &CppSourceTarget::moduleMaps(const string &include, U... includeDirectoryString)
+{
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        readModuleMapFromDir(include);
+    }
+
+    if constexpr (sizeof...(includeDirectoryString))
+    {
+        return moduleMaps(includeDirectoryString...);
+    }
+    else
+    {
+        return *this;
+    }
 }
 
 template <typename... U>
