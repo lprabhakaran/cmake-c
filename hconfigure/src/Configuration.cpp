@@ -1,4 +1,5 @@
 
+#include "ToolsCache.hpp"
 #ifdef USE_HEADER_UNITS
 import "Configuration.hpp";
 import "BoostCppTarget.hpp";

@@ -17,8 +17,6 @@ import <Windows.h>;
 #include "BuildSystemFunctions.hpp"
 #include "TargetCache.hpp"
 #include "lz4.h"
-#include "rapidjson/prettywriter.h"
-#include "rapidjson/writer.h"
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -275,7 +273,6 @@ void writeBuildBuffer(vector<char> &buffer)
 #define fopen_s(pFile, filename, mode) ((*(pFile)) = fopen((filename), (mode))) == NULL
 #endif
 
-using rapidjson::StringBuffer, rapidjson::Writer, rapidjson::PrettyWriter, rapidjson::UTF8;
 
 extern string GetLastErrorString();
 
@@ -446,22 +443,4 @@ bool childInParentPathNormalized(const string_view parent, const string_view chi
     }
 
     return compareStringsFromEnd(parent, string_view(child.data(), parent.size()));
-}
-
-void readValueFromFile(const string_view fileName, rapidjson::Document &document, rapidjson::ParseFlag flag)
-{
-    // Read whole file into a buffer
-    FILE *fp;
-    fopen_s(&fp, fileName.data(), "r");
-    fseek(fp, 0, SEEK_END);
-    const size_t filesize = (size_t)ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    unique_ptr<vector<char>> buffer = std::make_unique<vector<char>>(filesize + 1);
-    const size_t readLength = fread(buffer->begin().operator->(), 1, filesize, fp);
-    if (fclose(fp) != 0)
-    {
-        printErrorMessage("Error closing the file \n");
-    }
-
-    //    document.Parse()
 }

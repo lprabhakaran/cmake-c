@@ -628,49 +628,6 @@ void CppSourceTarget::actuallyAddInclude(const bool errorOnEmplaceFail, const No
     }
 }
 
-void CppSourceTarget::addModuleMap(const CppModMap &cppModMap)
-{
-    for (const auto &[logicalName, node] : cppModMap.publicHeaderFiles)
-    {
-        addHeaderFile(node, logicalName, false, true, true, false, false);
-    }
-
-    for (const auto &[logicalName, node] : cppModMap.privateHeaderFiles)
-    {
-        addHeaderFile(node, logicalName, false, true, false, false, false);
-    }
-
-    for (const auto &[logicalName, node] : cppModMap.interfaceHeaderFiles)
-    {
-        addHeaderFile(node, logicalName, false, false, true, false, false);
-    }
-
-    for (const auto &[node, logicalName] : cppModMap.publicHeaderUnits)
-    {
-        addHeaderUnit(logicalName, node, false, true, true, false, false);
-    }
-
-    for (const auto &[node, logicalName] : cppModMap.privateHeaderUnits)
-    {
-        addHeaderUnit(logicalName, node, false, true, false, false, false);
-    }
-
-    for (const auto &[node, logicalName] : cppModMap.interfaceFiles)
-    {
-        addHeaderUnit(logicalName, node, false, false, true, false, false);
-    }
-
-    for (const auto &[node, logicalName] : cppModMap.moduleFiles)
-    {
-        actuallyAddModuleFileConfigTime(logicalName, node);
-    }
-
-    for (const auto &p : cppModMap.modules)
-    {
-        actuallyAddModuleFileConfigTime(p, "");
-    }
-}
-
 void CppSourceTarget::updateBTarget(Builder &builder, const unsigned short round, bool &isComplete)
 {
     if (!round)
