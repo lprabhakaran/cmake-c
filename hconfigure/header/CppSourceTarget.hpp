@@ -80,7 +80,10 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
 
     atomic<uint64_t> newHeaderUnitsSize = 0;
 
-    bool addedInCopyJson = false;
+    // Used only at configure time
+    SMFile *publicBigHu = nullptr;
+    SMFile *privateBigHu = nullptr;
+    SMFile *interfaceBigHu = nullptr;
 
     void setCompileCommand();
     void setSourceCompileCommandPrintFirstHalf();
@@ -93,6 +96,7 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     void updateBTarget(Builder &builder, unsigned short round, bool &isComplete) override;
     void writeBuildCache(vector<char> &buffer) override;
     void setHeaderStatusChanged(BuildCache::Cpp::ModuleFile &modCache);
+    void writeBigHeaderUnits();
     void writeCacheAtConfigTime();
     void readConfigCacheAtBuildTime();
     string getPrintName() const override;

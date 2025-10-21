@@ -87,6 +87,12 @@ enum class StdAsHeaderUnit : bool
     YES,
 };
 
+enum class BigHeaderUnit : bool
+{
+    NO,
+    YES,
+};
+
 class CSourceTarget;
 class PLOAT;
 class LOAT;
@@ -113,6 +119,7 @@ class Configuration : public BTarget
     ExamplesExplicit examplesExplicit = ExamplesExplicit::NO;
     TreatModuleAsSource treatModuleASSource = TreatModuleAsSource::YES;
     StdAsHeaderUnit stdAsHeaderUnit = StdAsHeaderUnit::YES;
+    BigHeaderUnit bigHeaderUnit = BigHeaderUnit::NO;
 
     bool archiving = false;
 
@@ -258,6 +265,10 @@ template <typename T> bool Configuration::evaluate(T property) const
     else if constexpr (std::is_same_v<decltype(property), StdAsHeaderUnit>)
     {
         return stdAsHeaderUnit == property;
+    }
+    else if constexpr (std::is_same_v<decltype(property), BigHeaderUnit>)
+    {
+        return bigHeaderUnit == property;
     }
     // CppCompilerFeatures
     else if constexpr (std::is_same_v<decltype(property), CxxSTD>)

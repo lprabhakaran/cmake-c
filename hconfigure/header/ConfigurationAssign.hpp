@@ -102,6 +102,10 @@ template <typename T, typename... Property> Configuration &Configuration::assign
     {
         stdAsHeaderUnit = property;
     }
+    else if constexpr (std::is_same_v<decltype(property), BigHeaderUnit>)
+    {
+        bigHeaderUnit = property;
+    }
     // CommonFeatures
     else if constexpr (std::is_same_v<decltype(property), TargetOS>)
     {

@@ -464,6 +464,11 @@ void SMFile::makeAndSendBTCModule(SMFile &mod)
 
 void SMFile::makeAndSendBTCNonModule(SMFile &hu)
 {
+    if (node->filePath.contains("type_traits"))
+    {
+        bool breakpoint = true;
+    }
+
     N2978::BTCNonModule btcNonModule;
     btcNonModule.isHeaderUnit = true;
     btcNonModule.user = !hu.isSystem;
@@ -476,7 +481,7 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
     if (!firstMessageSent)
     {
         firstMessageSent = true;
-        for (const auto &[str, node] : headerFilesModule)
+        for (const auto &[str, node] : composingHeaders)
         {
             // emplace in header-files to send
             N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .user = true};
@@ -613,9 +618,9 @@ HeaderFileOrUnit SMFile::findHeaderFileOrUnit(const string &headerName)
     // to search whether we have a composing header specified. Otherwise, it would be a cyclic dependency.
     if (found.data.smFile == this && !firstMessageSent)
     {
-        if (const auto it = headerFilesModule.find(headerName); it != headerFilesModule.end())
+        if (const auto it = composingHeaders.find(headerName); it != composingHeaders.end())
         {
-            return {it->second, false};
+            return {const_cast<Node *>(it->second), false};
         }
     }
 
@@ -713,7 +718,7 @@ bool SMFile::build(Builder &builder)
                     if (!firstMessageSent)
                     {
                         firstMessageSent = true;
-                        for (const auto &[str, node] : headerFilesModule)
+                        for (const auto &[str, node] : composingHeaders)
                         {
                             if (node == f.data.node)
                             {
@@ -729,7 +734,7 @@ bool SMFile::build(Builder &builder)
                     }
                     else
                     {
-                        if (!headerFilesModule.emplace(headerName, f.data.node).second)
+                        if (!composingHeaders.emplace(headerName, f.data.node).second)
                         {
                             printErrorMessage(
                                 FORMAT("A header-file already sent re-requested.\n{}\n", f.data.node->filePath));

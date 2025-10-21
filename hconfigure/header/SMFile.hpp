@@ -96,15 +96,20 @@ struct SMFile : SourceNode // Scanned Module Rule
     BuildCache::Cpp::ModuleFile::SmRules smRulesCache;
     string logicalName;
 
+    // Those header-files which are #included in this module or hu. These are initialized from config-cache as big-hu
+    // have these. While Source::headerFiles have all the header-files of ours and our dependencies for accurate
+    // rebuilds.
+    flat_hash_map<string, const Node *> composingHeaders;
     flat_hash_set<SMFile *> allSMFileDependencies;
+
+    RunCommand run;
     vector<string> logicalNames;
+
     vector<Node *> *headerFilesCache;
-    flat_hash_map<string, Node *> headerFilesModule;
     Node *interfaceNode;
     SMFile *waitingFor = nullptr;
 
     N2978::IPCManagerBS *ipcManager;
-    RunCommand run;
 
     SM_FILE_TYPE type = SM_FILE_TYPE::NOT_ASSIGNED;
 
@@ -112,6 +117,7 @@ struct SMFile : SourceNode // Scanned Module Rule
     // could be potentially discovered more than once.
     bool addedForBuilding = false;
 
+    // following 2 only used at configure time.
     bool isReqDep = false;
     bool isUseReqDep = false;
     bool isSystem = false;

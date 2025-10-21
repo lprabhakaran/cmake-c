@@ -409,16 +409,59 @@ void CppSourceTarget::addHeaderUnit(const Node *headerNode, const string &logica
 {
     string *p = new string(logicalName);
     lowerCaseOnWindows(p->data(), p->size());
-    for (const SMFile *smFile : huDeps)
+
+    SMFile *hu = nullptr;
+
+    bool emplaceInLogicalNames = false;
+    if (configuration->evaluate(BigHeaderUnit::YES))
     {
-        if (smFile->node == headerNode)
+        if (addInReq && addInUseReq)
         {
-            printErrorMessage(
-                FORMAT("Attempting to add {} twice in header-units in cpptarget {}.\n", headerNode->filePath, name));
+            if (!publicBigHu)
+            {
+                string str(myBuildDir->filePath + slashc + string("public-") + std::to_string(cacheIndex) + ".hpp");
+                ofstream f{str};
+                publicBigHu = new SMFile(this, Node::getNodeFromNonNormalizedString(str, true));
+            }
+            hu = publicBigHu;
         }
+        else if (addInReq)
+        {
+            if (privateBigHu)
+            {
+                string str(myBuildDir->filePath + slashc + string("private-") + std::to_string(cacheIndex) + ".hpp");
+                ofstream f{str};
+                privateBigHu = new SMFile(this, Node::getNodeFromNonNormalizedString(str, true));
+            }
+            hu = privateBigHu;
+        }
+        else if (addInUseReq)
+        {
+            if (!interfaceBigHu)
+            {
+                string str(myBuildDir->filePath + slashc + string("interface-") + std::to_string(cacheIndex) + ".hpp");
+                ofstream f{str};
+                interfaceBigHu = new SMFile(this, Node::getNodeFromNonNormalizedString(str, true));
+            }
+            hu = interfaceBigHu;
+        }
+        hu->composingHeaders.emplace(logicalName, headerNode);
+    }
+    else
+    {
+        for (const SMFile *smFile : huDeps)
+        {
+            if (smFile->node == headerNode)
+            {
+                printErrorMessage(FORMAT("Attempting to add {} twice in header-units in cpptarget {}.\n",
+                                         headerNode->filePath, name));
+            }
+        }
+
+        hu = huDeps.emplace_back(new SMFile(this, headerNode));
     }
 
-    SMFile *hu = huDeps.emplace_back(new SMFile(this, headerNode));
+    // if suppressError is to be added, then emplace here needs to be conditioned.
     hu->logicalNames.emplace_back(*p);
 
     if (addInReq)
@@ -642,6 +685,7 @@ void CppSourceTarget::updateBTarget(Builder &builder, const unsigned short round
     {
         if constexpr (bsMode == BSMode::CONFIGURE)
         {
+            writeBigHeaderUnits();
             writeCacheAtConfigTime();
             populateReqAndUseReqDeps();
 
@@ -911,6 +955,26 @@ void CppSourceTarget::setHeaderStatusChanged(BuildCache::Cpp::ModuleFile &modCac
     }
 }
 
+void CppSourceTarget::writeBigHeaderUnits()
+{
+    auto writeBigHu = [&](SMFile *bigHu) {
+        if (bigHu)
+        {
+            string str;
+            for (const string &s : bigHu->logicalNames)
+            {
+                str += "#include \"" + s + "\"\n";
+            }
+            ofstream(bigHu->node->filePath) << str;
+            huDeps.emplace_back(bigHu);
+        }
+    };
+
+    writeBigHu(publicBigHu);
+    writeBigHu(privateBigHu);
+    writeBigHu(interfaceBigHu);
+}
+
 void CppSourceTarget::writeCacheAtConfigTime()
 {
     cppBuildCache.deserialize(cacheIndex);
@@ -965,23 +1029,24 @@ void CppSourceTarget::writeCacheAtConfigTime()
         writeUint32(*configBuffer, hu->indexInBuildCache);
         writeNode(*configBuffer, hu->node);
         writeNode(*configBuffer, hu->interfaceNode);
-        const uint32_t logicalNamesSize = hu->logicalNames.size();
-        writeUint32(*configBuffer, logicalNamesSize);
-        for (uint32_t i = 0; i < logicalNamesSize; ++i)
-        {
-            writeStringView(*configBuffer, hu->logicalNames[i]);
-        }
-
-        writeUint32(*configBuffer, hu->headerFilesModule.size());
-        for (const auto &[headerName, headerNode] : hu->headerFilesModule)
-        {
-            writeStringView(*configBuffer, headerName);
-            writeNode(*configBuffer, headerNode);
-        }
 
         writeBool(*configBuffer, hu->isReqDep);
         writeBool(*configBuffer, hu->isUseReqDep);
         writeBool(*configBuffer, hu->isSystem);
+
+        const uint32_t logicalNamesSize = hu->logicalNames.size();
+        writeUint32(*configBuffer, logicalNamesSize);
+        for (const string &str : hu->logicalNames)
+        {
+            writeStringView(*configBuffer, str);
+        }
+
+        writeUint32(*configBuffer, hu->composingHeaders.size());
+        for (const auto &[headerName, headerNode] : hu->composingHeaders)
+        {
+            writeStringView(*configBuffer, headerName);
+            writeNode(*configBuffer, headerNode);
+        }
     }
 
     writeNode(*configBuffer, myBuildDir);
@@ -1056,13 +1121,27 @@ void CppSourceTarget::readConfigCacheAtBuildTime()
         const uint32_t indexInBuildCache = readUint32(ptr, configRead);
         SMFile *hu = huDeps[indexInBuildCache] = new SMFile(this, readHalfNode(ptr, configRead));
         hu->indexInBuildCache = indexInBuildCache;
-
         hu->interfaceNode = readHalfNode(ptr, configRead);
+
+        hu->isReqDep = readBool(ptr, configRead);
+        hu->isUseReqDep = readBool(ptr, configRead);
+        hu->isSystem = readBool(ptr, configRead);
+
         const uint32_t logicalNamesSize = readUint32(ptr, configRead);
         hu->logicalNames.reserve(logicalNamesSize);
         for (uint32_t j = 0; j < logicalNamesSize; ++j)
         {
-            hu->logicalNames.emplace_back(readStringView(ptr, configRead));
+            string_view str = readStringView(ptr, configRead);
+            hu->logicalNames.emplace_back(str);
+            if (hu->isReqDep)
+            {
+                reqHeaderNameMapping.emplace(str, HeaderFileOrUnit(hu, hu->isSystem));
+            }
+
+            if (hu->isUseReqDep)
+            {
+                useReqHeaderNameMapping.emplace(str, HeaderFileOrUnit(hu, hu->isSystem));
+            }
         }
 
         const uint32_t headerFileModuleSize = readUint32(ptr, configRead);
@@ -1070,27 +1149,7 @@ void CppSourceTarget::readConfigCacheAtBuildTime()
         {
             string_view headerFileName = readStringView(ptr, configRead);
             Node *headerNode = readHalfNode(ptr, configRead);
-            hu->headerFilesModule.emplace(headerFileName, headerNode);
-        }
-
-        hu->isReqDep = readBool(ptr, configRead);
-        hu->isUseReqDep = readBool(ptr, configRead);
-        hu->isSystem = readBool(ptr, configRead);
-
-        if (hu->isReqDep)
-        {
-            for (const string &str : hu->logicalNames)
-            {
-                reqHeaderNameMapping.emplace(str, HeaderFileOrUnit(hu, hu->isSystem));
-            }
-        }
-
-        if (hu->isUseReqDep)
-        {
-            for (const string &str : hu->logicalNames)
-            {
-                useReqHeaderNameMapping.emplace(str, HeaderFileOrUnit(hu, hu->isSystem));
-            }
+            hu->composingHeaders.emplace(headerFileName, headerNode);
         }
 
         hu->type = SM_FILE_TYPE::HEADER_UNIT;
