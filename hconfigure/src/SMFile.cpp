@@ -845,15 +845,14 @@ void SMFile::updateBTarget(Builder &builder, const unsigned short round, bool &i
                 allSMFileDependencies.clear();
                 rb.assignFileStatusToDependents();
 
-                if (auto r = N2978::makeIPCManagerBS(type == SM_FILE_TYPE::HEADER_UNIT ? interfaceNode->filePath
-                                                                                       : objectNode->filePath);
-                    r)
+                const Node *endNode = type == SM_FILE_TYPE::HEADER_UNIT ? interfaceNode : objectNode;
+                if (auto r = N2978::makeIPCManagerBS(endNode->filePath); r)
                 {
                     ipcManager = new IPCManagerBS(*r);
                 }
                 else
                 {
-                    printErrorMessage(FORMAT("Could not make the build-system manager {}\n", objectNode->filePath));
+                    printErrorMessage(FORMAT("Could not make the build-system manager {}\n", endNode->filePath));
                 }
 
                 const string compileCommand = "\"" +

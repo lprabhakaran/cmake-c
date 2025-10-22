@@ -427,7 +427,7 @@ void CppSourceTarget::addHeaderUnit(const Node *headerNode, const string &logica
         }
         else if (addInReq)
         {
-            if (privateBigHu)
+            if (!privateBigHu)
             {
                 string str(myBuildDir->filePath + slashc + string("private-") + std::to_string(cacheIndex) + ".hpp");
                 ofstream f{str};
@@ -983,8 +983,9 @@ void CppSourceTarget::writeCacheAtConfigTime()
     writeUint32(*configBuffer, srcFileDeps.size());
     for (SourceNode *source : srcFileDeps)
     {
+        string fileNumber = std::to_string(source->node->myId);
         source->objectNode = Node::getNodeFromNormalizedString(
-            myBuildDir->filePath + slashc + source->node->getFileName() + ".o", true, true);
+            myBuildDir->filePath + slashc + source->node->getFileName() + fileNumber + ".o", true, true);
 
         writeNode(*configBuffer, source->node);
         writeNode(*configBuffer, source->objectNode);
@@ -993,8 +994,9 @@ void CppSourceTarget::writeCacheAtConfigTime()
     writeUint32(*configBuffer, modFileDeps.size());
     for (SMFile *smFile : modFileDeps)
     {
+        string fileNumber = std::to_string(smFile->node->myId);
         smFile->objectNode = Node::getNodeFromNormalizedString(
-            myBuildDir->filePath + slashc + smFile->node->getFileName() + ".o", true, true);
+            myBuildDir->filePath + slashc + smFile->node->getFileName() + fileNumber + ".o", true, true);
         writeNode(*configBuffer, smFile->node);
         writeNode(*configBuffer, smFile->objectNode);
     }
@@ -1002,10 +1004,11 @@ void CppSourceTarget::writeCacheAtConfigTime()
     writeUint32(*configBuffer, imodFileDeps.size());
     for (SMFile *smFile : imodFileDeps)
     {
+        string fileNumber = std::to_string(smFile->node->myId);
         smFile->objectNode = Node::getNodeFromNormalizedString(
-            myBuildDir->filePath + slashc + smFile->node->getFileName() + ".o", true, true);
+            myBuildDir->filePath + slashc + smFile->node->getFileName() + fileNumber + ".o", true, true);
         smFile->interfaceNode = Node::getNodeFromNormalizedString(
-            myBuildDir->filePath + slashc + smFile->node->getFileName() + ".ifc", true, true);
+            myBuildDir->filePath + slashc + smFile->node->getFileName() + fileNumber + ".ifc", true, true);
         writeNode(*configBuffer, smFile->node);
         writeStringView(*configBuffer, smFile->logicalName);
         writeNode(*configBuffer, smFile->objectNode);
@@ -1015,6 +1018,7 @@ void CppSourceTarget::writeCacheAtConfigTime()
     writeUint32(*configBuffer, huDeps.size());
     for (SMFile *hu : huDeps)
     {
+        string fileNumber = std::to_string(hu->node->myId);
         uint32_t index = findNodeInSourceCache(cppBuildCache.headerUnits, hu->node);
         if (index == -1)
         {
@@ -1024,7 +1028,7 @@ void CppSourceTarget::writeCacheAtConfigTime()
         }
         hu->indexInBuildCache = index;
         hu->interfaceNode = Node::getNodeFromNormalizedString(
-            myBuildDir->filePath + slashc + hu->node->getFileName() + ".ifc", true, true);
+            myBuildDir->filePath + slashc + hu->node->getFileName() + fileNumber + ".ifc", true, true);
 
         writeUint32(*configBuffer, hu->indexInBuildCache);
         writeNode(*configBuffer, hu->node);

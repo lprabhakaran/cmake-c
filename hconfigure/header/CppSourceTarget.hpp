@@ -171,6 +171,21 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     template <typename... U>
     CppSourceTarget &interfaceHUDirsRE(const string &include, const string &prefix, const string &regexStr,
                                        U... includeDirectoryString);
+    template <typename... U>
+    CppSourceTarget &publicIncDirs(const string &include, const string &prefix, U... includeDirectoryString);
+    template <typename... U>
+    CppSourceTarget &privateIncDirs(const string &include, const string &prefix, U... includeDirectoryString);
+    template <typename... U>
+    CppSourceTarget &interfaceIncDirs(const string &include, const string &prefix, U... includeDirectoryString);
+    template <typename... U>
+    CppSourceTarget &publicIncDirsRE(const string &include, const string &prefix, const string &regexStr,
+                                    U... includeDirectoryString);
+    template <typename... U>
+    CppSourceTarget &privateIncDirsRE(const string &include, const string &prefix, const string &regexStr,
+                                     U... includeDirectoryString);
+    template <typename... U>
+    CppSourceTarget &interfaceIncDirsRE(const string &include, const string &prefix, const string &regexStr,
+                                       U... includeDirectoryString);
     template <typename... U> CppSourceTarget &publicIncludesSource(const string &include, U... includeDirectoryString);
     template <typename... U> CppSourceTarget &privateIncludesSource(const string &include, U... includeDirectoryString);
     template <typename... U>
@@ -679,6 +694,146 @@ CppSourceTarget &CppSourceTarget::interfaceHUDirsRE(const string &include, const
     if constexpr (sizeof...(includeDirectoryString))
     {
         return interfaceHUDirsRE(includeDirectoryString...);
+    }
+    else
+    {
+        return *this;
+    }
+}
+
+
+template <typename... U>
+CppSourceTarget &CppSourceTarget::publicIncDirs(const string &include, const string &prefix, U... includeDirectoryString)
+{
+
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        if (configuration->evaluate(TreatModuleAsSource::NO))
+        {
+            Node *inclNode = Node::getNodeFromNonNormalizedPath(include, false);
+            addHeaderUnitOrFileDir(inclNode, prefix, true, "", true, true);
+        }
+    }
+
+    if constexpr (sizeof...(includeDirectoryString))
+    {
+        return publicIncDirs(includeDirectoryString...);
+    }
+    else
+    {
+        return *this;
+    }
+}
+
+template <typename... U>
+CppSourceTarget &CppSourceTarget::privateIncDirs(const string &include, const string &prefix,
+                                                U... includeDirectoryString)
+{
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        if (configuration->evaluate(TreatModuleAsSource::NO))
+        {
+            Node *inclNode = Node::getNodeFromNonNormalizedPath(include, false);
+            addHeaderUnitOrFileDir(inclNode, prefix, true, "", true, false);
+        }
+    }
+
+    if constexpr (sizeof...(includeDirectoryString))
+    {
+        return privateIncDirs(includeDirectoryString...);
+    }
+    else
+    {
+        return *this;
+    }
+}
+
+template <typename... U>
+CppSourceTarget &CppSourceTarget::interfaceIncDirs(const string &include, const string &prefix,
+                                                  U... includeDirectoryString)
+{
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        if (configuration->evaluate(TreatModuleAsSource::NO))
+        {
+            Node *inclNode = Node::getNodeFromNonNormalizedPath(include, false);
+            addHeaderUnitOrFileDir(inclNode, prefix, true, "", false, true);
+        }
+    }
+
+    if constexpr (sizeof...(includeDirectoryString))
+    {
+        return interfaceIncDirs(includeDirectoryString...);
+    }
+    else
+    {
+        return *this;
+    }
+}
+
+template <typename... U>
+CppSourceTarget &CppSourceTarget::publicIncDirsRE(const string &include, const string &prefix, const string &regexStr,
+                                                 U... includeDirectoryString)
+{
+
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        if (configuration->evaluate(TreatModuleAsSource::NO))
+        {
+            Node *inclNode = Node::getNodeFromNonNormalizedPath(include, false);
+            addHeaderUnitOrFileDir(inclNode, prefix, true, regexStr, true, true);
+        }
+    }
+
+    if constexpr (sizeof...(includeDirectoryString))
+    {
+        return publicIncDirsRE(includeDirectoryString...);
+    }
+    else
+    {
+        return *this;
+    }
+}
+
+template <typename... U>
+CppSourceTarget &CppSourceTarget::privateIncDirsRE(const string &include, const string &prefix, const string &regexStr,
+                                                  U... includeDirectoryString)
+{
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        if (configuration->evaluate(TreatModuleAsSource::NO))
+        {
+            Node *inclNode = Node::getNodeFromNonNormalizedPath(include, false);
+            addHeaderUnitOrFileDir(inclNode, prefix, true, regexStr, true, false);
+        }
+    }
+
+    if constexpr (sizeof...(includeDirectoryString))
+    {
+        return privateIncDirsRE(includeDirectoryString...);
+    }
+    else
+    {
+        return *this;
+    }
+}
+
+template <typename... U>
+CppSourceTarget &CppSourceTarget::interfaceIncDirsRE(const string &include, const string &prefix, const string &regexStr,
+                                                    U... includeDirectoryString)
+{
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        if (configuration->evaluate(TreatModuleAsSource::NO))
+        {
+            Node *inclNode = Node::getNodeFromNonNormalizedPath(include, false);
+            addHeaderUnitOrFileDir(inclNode, prefix, true, regexStr, false, true);
+        }
+    }
+
+    if constexpr (sizeof...(includeDirectoryString))
+    {
+        return interfaceIncDirsRE(includeDirectoryString...);
     }
     else
     {
