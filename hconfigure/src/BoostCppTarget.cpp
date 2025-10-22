@@ -56,6 +56,10 @@ void removeTroublingHu(const string_view *headerUnitsJsonDirs, uint64_t headerUn
 static DSC<CppSourceTarget> &getMainTarget(const string &name, Configuration *configuration, const bool headerOnly,
                                            const bool hasBigHeader)
 {
+    if (name == "boost/core/noncopyable.hpp")
+    {
+        bool breakpoint = true;
+    }
     const string buildCacheFilesDirPath = configuration->name + slashc + name;
 
     DSC<CppSourceTarget> *t = nullptr;
@@ -70,10 +74,25 @@ static DSC<CppSourceTarget> &getMainTarget(const string &name, Configuration *co
     }
 
     CppSourceTarget &cpp = t->getSourceTarget();
-    //    cpp.publicHUDirs(string("boost") + slashc + name);
-    if (hasBigHeader)
+    const string s = "boost/" + name;
+    if (name == "hash2" || name == "container_hash" || name == "describe" || name == "mp11" || name == "io" ||
+        name == "system")
     {
-        // cpp.headerUnits(string("boost") + slashc + name + ".hpp");
+        cpp.publicHUDirsRE(s, s + '/', ".*hpp");
+        cpp.publicHUDirsRE(s, s + '/', ".*h");
+        if (hasBigHeader)
+        {
+            cpp.publicHeaderUnits(s + ".hpp", s + ".hpp");
+        }
+    }
+    else
+    {
+        cpp.publicIncDirsRE(s, s + '/', ".*hpp");
+        cpp.publicIncDirsRE(s, s + '/', ".*h");
+        if (hasBigHeader)
+        {
+            cpp.publicHeaderFiles(s + ".hpp", s + ".hpp");
+        }
     }
     return *t;
 }
@@ -165,6 +184,15 @@ BoostCppTarget::BoostCppTarget(const string &name, Configuration *configuration_
     }
     else
     {
+        string str = srcNode->filePath + "/libs/" + name + "/test";
+        for (const auto &p : std::filesystem::recursive_directory_iterator(str))
+        {
+            if (p.path().extension() == ".ipp" || p.path().extension() == ".hpp")
+            {
+                Node *node = Node::getNodeFromNonNormalizedString(p.path().generic_string(), true);
+                testReqHeaderFiles.emplace(string(node->getFileName()), node);
+            }
+        }
         writeUint32(configBuffer, 0);
     }
 }

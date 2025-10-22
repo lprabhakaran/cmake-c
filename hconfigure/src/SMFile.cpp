@@ -1,35 +1,17 @@
 
-#include "TargetCache.hpp"
-#ifdef USE_HEADER_UNITS
-import "SMFile.hpp";
-
-import "BuildSystemFunctions.hpp";
-import "Builder.hpp";
-import "Configuration.hpp";
-import "CppSourceTarget.hpp";
-import "JConsts.hpp";
-import "Settings.hpp";
-import "StaticVector.hpp";
-import "CacheWriteManager.hpp";
-import "Utilities.hpp";
-import <filesystem>;
-import <fstream>;
-import <mutex>;
-import <utility>;
-#else
+#include "SMFile.hpp"
 #include "BuildSystemFunctions.hpp"
 #include "Builder.hpp"
 #include "CacheWriteManager.hpp"
 #include "Configuration.hpp"
 #include "CppSourceTarget.hpp"
 #include "JConsts.hpp"
-#include "SMFile.hpp"
 #include "Settings.hpp"
+#include "TargetCache.hpp"
 #include "Utilities.hpp"
 #include <filesystem>
 #include <mutex>
 #include <utility>
-#endif
 
 using std::tie, std::ifstream, std::exception, std::lock_guard, N2978::IPCManagerBS;
 

@@ -8,7 +8,7 @@ import "parallel_hashmap/phmap.h";
 import <atomic>;
 #else
 #include "BuildSystemFunctions.hpp"
-#include "phmap.h"
+#include "parallel-hashmap/parallel_hashmap/phmap.h"
 #include <atomic>
 #endif
 

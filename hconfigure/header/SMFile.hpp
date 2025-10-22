@@ -1,31 +1,18 @@
 #ifndef HMAKE_SMFILE_HPP
 #define HMAKE_SMFILE_HPP
 
-#ifdef USE_HEADER_UNITS
-import "IPCManagerBS.hpp";
-import "RunCommand.hpp";
-import "SpecialNodes.hpp";
-import "TargetCache.hpp";
-import "ObjectFile.hpp";
-import <filesystem>;
-import <list>;
-import <utility>;
-import <vector>;
-import <atomic>;
-#else
 #include "IPCManagerBS.hpp"
 #include "ObjectFile.hpp"
 #include "RunCommand.hpp"
 #include "SpecialNodes.hpp"
 #include "TargetCache.hpp"
-#include "btree.h"
+#include "parallel-hashmap/parallel_hashmap/btree.h"
 #include "nlohmann/json.hpp"
 #include <atomic>
 #include <filesystem>
 #include <list>
 #include <utility>
 #include <vector>
-#endif
 
 using Json = nlohmann::json;
 using std::vector, std::filesystem::path, std::pair, std::list, std::shared_ptr, std::atomic, std::atomic_flag,

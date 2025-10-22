@@ -16,7 +16,7 @@ import <Windows.h>;
 #include "PlatformSpecific.hpp"
 #include "BuildSystemFunctions.hpp"
 #include "TargetCache.hpp"
-#include "lz4.h"
+#include "lz4/lib/lz4.h"
 #include <cstdio>
 #include <fstream>
 #include <iostream>
