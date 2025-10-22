@@ -1,7 +1,6 @@
 
 #ifndef HMAKE_PLATFORMSPECIFIC_HPP
 #define HMAKE_PLATFORMSPECIFIC_HPP
-#include "rapidjson/document.h"
 
 #ifdef USE_HEADER_UNITS
 import "fmt/format.h";
@@ -43,7 +42,7 @@ void writeBuildBuffer(vector<char> &buffer);
 void writeBufferToCompressedFile(const string &fileName, const vector<char> &fileBuffer);
 bool compareStringsFromEnd(string_view lhs, string_view rhs);
 void lowerCaseOnWindows(char *ptr, uint64_t size);
+string getNormalizedPath(path filePath);
 bool childInParentPathNormalized(string_view parent, string_view child);
-void readValueFromFile(string_view fileName, rapidjson::Document &document, rapidjson::ParseFlag flag);
 
 #endif // HMAKE_PLATFORMSPECIFIC_HPP

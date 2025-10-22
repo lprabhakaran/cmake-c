@@ -987,7 +987,10 @@ CppSourceTarget &CppSourceTarget::interfaceHeaderUnits(const string &header, con
 
 template <typename... U> CppSourceTarget &CppSourceTarget::sourceDirs(const string &sourceDirectory, U... dirs)
 {
-    parseRegexSourceDirs(true, sourceDirectory, ".*", false);
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        parseRegexSourceDirs(true, sourceDirectory, ".*", false);
+    }
     if constexpr (sizeof...(dirs))
     {
         return sourceDirs(dirs...);
@@ -997,7 +1000,10 @@ template <typename... U> CppSourceTarget &CppSourceTarget::sourceDirs(const stri
 
 template <typename... U> CppSourceTarget &CppSourceTarget::moduleDirs(const string &moduleDirectory, U... dirs)
 {
-    parseRegexSourceDirs(false, moduleDirectory, ".*", false);
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        parseRegexSourceDirs(false, moduleDirectory, ".*", false);
+    }
     if constexpr (sizeof...(dirs))
     {
         return moduleDirs(dirs...);
@@ -1008,7 +1014,10 @@ template <typename... U> CppSourceTarget &CppSourceTarget::moduleDirs(const stri
 template <typename... U>
 CppSourceTarget &CppSourceTarget::sourceDirsRE(const string &sourceDirectory, const string &regex, U... dirs)
 {
-    parseRegexSourceDirs(true, sourceDirectory, regex, false);
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        parseRegexSourceDirs(true, sourceDirectory, regex, false);
+    }
     if constexpr (sizeof...(dirs))
     {
         return sourceDirsRE(dirs...);
@@ -1019,7 +1028,10 @@ CppSourceTarget &CppSourceTarget::sourceDirsRE(const string &sourceDirectory, co
 template <typename... U>
 CppSourceTarget &CppSourceTarget::moduleDirsRE(const string &moduleDirectory, const string &regex, U... dirs)
 {
-    parseRegexSourceDirs(false, moduleDirectory, regex, false);
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        parseRegexSourceDirs(false, moduleDirectory, regex, false);
+    }
     if constexpr (sizeof...(dirs))
     {
         return moduleDirsRE(dirs...);
@@ -1029,7 +1041,10 @@ CppSourceTarget &CppSourceTarget::moduleDirsRE(const string &moduleDirectory, co
 
 template <typename... U> CppSourceTarget &CppSourceTarget::rSourceDirs(const string &sourceDirectory, U... dirs)
 {
-    parseRegexSourceDirs(true, sourceDirectory, ".*", true);
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        parseRegexSourceDirs(true, sourceDirectory, ".*", true);
+    }
     if constexpr (sizeof...(dirs))
     {
         return rSourceDirs(dirs...);
@@ -1039,7 +1054,10 @@ template <typename... U> CppSourceTarget &CppSourceTarget::rSourceDirs(const str
 
 template <typename... U> CppSourceTarget &CppSourceTarget::rModuleDirs(const string &moduleDirectory, U... dirs)
 {
-    parseRegexSourceDirs(false, moduleDirectory, ".*", true);
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        parseRegexSourceDirs(false, moduleDirectory, ".*", true);
+    }
     if constexpr (sizeof...(dirs))
     {
         return rModuleDirs(dirs...);
@@ -1050,7 +1068,10 @@ template <typename... U> CppSourceTarget &CppSourceTarget::rModuleDirs(const str
 template <typename... U>
 CppSourceTarget &CppSourceTarget::rSourceDirsRE(const string &sourceDirectory, const string &regex, U... dirs)
 {
-    parseRegexSourceDirs(true, sourceDirectory, regex, true);
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        parseRegexSourceDirs(true, sourceDirectory, regex, true);
+    }
     if constexpr (sizeof...(dirs))
     {
         return R_sourceDirsRE(dirs...);
@@ -1061,7 +1082,10 @@ CppSourceTarget &CppSourceTarget::rSourceDirsRE(const string &sourceDirectory, c
 template <typename... U>
 CppSourceTarget &CppSourceTarget::rModuleDirsRE(const string &moduleDirectory, const string &regex, U... dirs)
 {
-    parseRegexSourceDirs(false, moduleDirectory, regex, true);
+    if constexpr (bsMode == BSMode::CONFIGURE)
+    {
+        parseRegexSourceDirs(false, moduleDirectory, regex, true);
+    }
     if constexpr (sizeof...(dirs))
     {
         return R_moduleDirsRE(dirs...);

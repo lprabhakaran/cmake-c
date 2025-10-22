@@ -1,27 +1,14 @@
 
-#ifdef USE_HEADER_UNITS
-import "BuildSystemFunctions.hpp";
-import "Builder.hpp";
-import "Cache.hpp";
-import <DSC.hpp>;
-import "CppSourceTarget.hpp";
-import "CacheWriteManager.hpp";
-import "fmt/format.h";
-import <filesystem>;
-import <fstream>;
-import <stacktrace>;
-#else
 #include "BuildSystemFunctions.hpp"
 #include "Builder.hpp"
 #include "Cache.hpp"
 #include "CacheWriteManager.hpp"
 #include "CppSourceTarget.hpp"
+#include "ToolsCache.hpp"
 #include "fmt/format.h"
-#include <DSC.hpp>
 #include <filesystem>
 #include <fstream>
 #include <stacktrace>
-#endif
 
 using fmt::print, std::filesystem::current_path, std::filesystem::directory_iterator, std::ifstream, std::ofstream;
 

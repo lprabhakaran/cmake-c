@@ -715,6 +715,7 @@ bool SMFile::build(Builder &builder)
                     response.isHeaderUnit = false;
                     response.user = !f.isSystem;
 
+                    bool addedInComposingHeader = false;
                     if (!firstMessageSent)
                     {
                         firstMessageSent = true;
@@ -723,6 +724,7 @@ bool SMFile::build(Builder &builder)
                             if (node == f.data.node)
                             {
                                 headerFiles.emplace(f.data.node);
+                                addedInComposingHeader = true;
                                 continue;
                             }
 
@@ -732,7 +734,8 @@ bool SMFile::build(Builder &builder)
                             headerFiles.emplace(f.data.node);
                         }
                     }
-                    else
+
+                    if (!addedInComposingHeader)
                     {
                         if (!composingHeaders.emplace(headerName, f.data.node).second)
                         {

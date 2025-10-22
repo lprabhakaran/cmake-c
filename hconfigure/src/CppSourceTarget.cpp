@@ -1229,8 +1229,7 @@ void CppSourceTarget::parseRegexSourceDirs(bool assignToSourceNodes, const strin
 
     if constexpr (bsMode == BSMode::BUILD)
     {
-        // Initialized in CppSourceTarget round 2
-        return;
+        printErrorMessage("Called Wrong time");
     }
 
     auto addNewFile = [&](const auto &k) {
@@ -1250,14 +1249,14 @@ void CppSourceTarget::parseRegexSourceDirs(bool assignToSourceNodes, const strin
 
     if (recursive)
     {
-        for (const auto &k : recursive_directory_iterator(path(sourceDirectory)))
+        for (const auto &k : recursive_directory_iterator(getNormalizedPath(sourceDirectory)))
         {
             addNewFile(k);
         }
     }
     else
     {
-        for (const auto &k : directory_iterator(path(sourceDirectory)))
+        for (const auto &k : directory_iterator(getNormalizedPath(sourceDirectory)))
         {
             addNewFile(k);
         }

@@ -433,6 +433,29 @@ void lowerCaseOnWindows(char *ptr, const uint64_t size)
     }
 }
 
+string getNormalizedPath(path filePath)
+{
+    if (filePath.is_relative())
+    {
+        filePath = path(srcNode->filePath) / filePath;
+    }
+    filePath = filePath.lexically_normal();
+
+    if constexpr (os == OS::NT)
+    {
+        // TODO
+        //  This is illegal
+        //  TODO
+        //  Needed because MSVC cl.exe returns header-unit paths is smrules file that are all lowercase instead of the
+        //  actual paths. In Windows paths could be case-insensitive. Just another wrinkle hahaha.
+        for (auto it = const_cast<path::value_type *>(filePath.c_str()); *it != '\0'; ++it)
+        {
+            *it = std::tolower(*it);
+        }
+    }
+    return filePath.string();
+}
+
 // TODO
 // Review this function and its usage.
 bool childInParentPathNormalized(const string_view parent, const string_view child)
