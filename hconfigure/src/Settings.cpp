@@ -42,7 +42,6 @@ void to_json(Json &json, const CompileCommandPrintSettings &ccpSettings)
     json[JConsts::ifcOutputFile] = ccpSettings.ifcOutputFile;
     json[JConsts::objectFile] = ccpSettings.objectFile;
     json[JConsts::outputAndErrorFiles] = ccpSettings.outputAndErrorFiles;
-    json[JConsts::pruneHeaderDependenciesFromMsvcOutput] = ccpSettings.pruneHeaderDepsFromMSVCOutput;
     json[JConsts::pruneCompiledSourceFileNameFromMsvcOutput] = ccpSettings.pruneCompiledSourceFileNameFromMSVCOutput;
     json[JConsts::ratioForHmakeTime] = ccpSettings.ratioForHMakeTime;
     json[JConsts::showPercentage] = ccpSettings.showPercentage;
@@ -63,7 +62,6 @@ void from_json(const Json &json, CompileCommandPrintSettings &ccpSettings)
     ccpSettings.ifcOutputFile = json.at(JConsts::ifcOutputFile).get<PathPrint>();
     ccpSettings.objectFile = json.at(JConsts::objectFile).get<PathPrint>();
     ccpSettings.outputAndErrorFiles = json.at(JConsts::outputAndErrorFiles).get<PathPrint>();
-    ccpSettings.pruneHeaderDepsFromMSVCOutput = json.at(JConsts::pruneHeaderDependenciesFromMsvcOutput).get<bool>();
     ccpSettings.pruneCompiledSourceFileNameFromMSVCOutput =
         json.at(JConsts::pruneCompiledSourceFileNameFromMsvcOutput).get<bool>();
     ccpSettings.ratioForHMakeTime = json.at(JConsts::ratioForHmakeTime).get<bool>();

@@ -1204,25 +1204,6 @@ CppSourceTarget &CppSourceTarget::interfaceCompilerFlags(const string &compilerF
     return *this;
 }
 
-CppSourceTarget &CppSourceTarget::publicCompileDefinition(const string &cddName, const string &cddValue)
-{
-    reqCompileDefinitions.emplace(cddName, cddValue);
-    useReqCompileDefinitions.emplace(cddName, cddValue);
-    return *this;
-}
-
-CppSourceTarget &CppSourceTarget::privateCompileDefinition(const string &cddName, const string &cddValue)
-{
-    reqCompileDefinitions.emplace(cddName, cddValue);
-    return *this;
-}
-
-CppSourceTarget &CppSourceTarget::interfaceCompileDefinition(const string &cddName, const string &cddValue)
-{
-    useReqCompileDefinitions.emplace(cddName, cddValue);
-    return *this;
-}
-
 void CppSourceTarget::parseRegexSourceDirs(bool assignToSourceNodes, const string &sourceDirectory, string regexStr,
                                            const bool recursive)
 {

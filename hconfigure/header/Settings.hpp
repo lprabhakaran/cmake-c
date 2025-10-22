@@ -57,7 +57,6 @@ struct CompileCommandPrintSettings
         .printLevel = PathPrintLevel::HALF, .depth = 3, .addQuotes = false, .isDirectory = false, .isTool = false};
     PathPrint outputAndErrorFiles{
         .printLevel = PathPrintLevel::NO, .depth = 3, .addQuotes = false, .isDirectory = false, .isTool = false};
-    bool pruneHeaderDepsFromMSVCOutput = true;
     bool pruneCompiledSourceFileNameFromMSVCOutput = true;
     bool ratioForHMakeTime = false;
     bool showPercentage = false;

@@ -94,6 +94,11 @@ void SourceNode::completeCompilation()
         headerFiles.clear();
         parseHeaderDeps(output);
     }
+    else if (compiler.bTFamily == BTFamily::MSVC)
+    {
+        // MSVC print header-files even when compilation fails.
+        parseHeaderDeps(output);
+    }
 
     const string printCommand =
         target->getSourceCompileCommandPrintFirstHalf() + target->getCompileCommandPrintSecondPart(*this);
@@ -134,20 +139,16 @@ void SourceNode::parseDepsFromMSVCTextOutput(string &output, const bool isClang)
 {
     const string includeFileNote = "Note: including file:";
 
-    if (ignoreHeaderDeps && settings.ccpSettings.pruneHeaderDepsFromMSVCOutput)
+    if (ignoreHeaderDeps || realBTargets[0].exitStatus != EXIT_SUCCESS)
     {
-        // TODO
-        //  Merge this if in the following else.
-        vector<string> outputLines = split(output, "\n");
-        for (auto iter = outputLines.begin(); iter != outputLines.end();)
+        string str = output;
+        output.clear();
+        uint32_t start = 0;
+        for (uint64_t i = str.find('\n', start); i != string::npos; start = i + 1, i = str.find('\n', start))
         {
-            if (iter->contains(includeFileNote))
+            if (string_view line = str.substr(start, i - start + 1); !line.contains(includeFileNote))
             {
-                iter = outputLines.erase(iter);
-            }
-            else
-            {
-                ++iter;
+                output += string(line);
             }
         }
         return;
@@ -170,11 +171,6 @@ void SourceNode::parseDepsFromMSVCTextOutput(string &output, const bool isClang)
         }
 
         line = {output.begin() + startPos, output.begin() + lineEnd + 1};
-
-        if (!settings.ccpSettings.pruneHeaderDepsFromMSVCOutput)
-        {
-            treatedOutput.append(line);
-        }
 
         startPos = lineEnd + 1;
     }
@@ -226,11 +222,6 @@ void SourceNode::parseDepsFromMSVCTextOutput(string &output, const bool isClang)
             else
             {
                 printErrorMessage(FORMAT("Empty Header Include {}\n", line));
-            }
-
-            if (!settings.ccpSettings.pruneHeaderDepsFromMSVCOutput)
-            {
-                treatedOutput.append(line);
             }
         }
         else

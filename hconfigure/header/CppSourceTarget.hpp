@@ -199,9 +199,14 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     CppSourceTarget &publicCompilerFlags(const string &compilerFlags);
     CppSourceTarget &privateCompilerFlags(const string &compilerFlags);
     CppSourceTarget &interfaceCompilerFlags(const string &compilerFlags);
-    CppSourceTarget &publicCompileDefinition(const string &cddName, const string &cddValue = "");
-    CppSourceTarget &privateCompileDefinition(const string &cddName, const string &cddValue = "");
-    CppSourceTarget &interfaceCompileDefinition(const string &cddName, const string &cddValue = "");
+
+    template <typename... U>
+    CppSourceTarget &publicCompileDefines(const string &cddName, const string &cddValue, U... compileDefines);
+    template <typename... U>
+    CppSourceTarget &privateCompileDefines(const string &cddName, const string &cddValue, U... compileDefines);
+    template <typename... U>
+    CppSourceTarget &interfaceCompileDefines(const string &cddName, const string &cddValue, U... compileDefines);
+
     template <typename... U>
     CppSourceTarget &interfaceFiles(const string &modFile, const string &exportName, U... moduleFileString);
     template <typename... U>
@@ -978,6 +983,55 @@ template <typename... U> CppSourceTarget &CppSourceTarget::moduleFiles(const str
     if constexpr (sizeof...(moduleFileString))
     {
         return moduleFiles(moduleFileString...);
+    }
+    else
+    {
+        return *this;
+    }
+}
+
+template <typename... U>
+CppSourceTarget &CppSourceTarget::publicCompileDefines(const string &cddName, const string &cddValue,
+                                                       U... compileDefines)
+{
+    reqCompileDefinitions.emplace(cddName, cddValue);
+    useReqCompileDefinitions.emplace(cddName, cddValue);
+
+    if constexpr (sizeof...(compileDefines))
+    {
+        return publicCompileDefines(compileDefines...);
+    }
+    else
+    {
+        return *this;
+    }
+}
+
+template <typename... U>
+CppSourceTarget &CppSourceTarget::privateCompileDefines(const string &cddName, const string &cddValue,
+                                                        U... compileDefines)
+{
+    reqCompileDefinitions.emplace(cddName, cddValue);
+
+    if constexpr (sizeof...(compileDefines))
+    {
+        return privateCompileDefines(compileDefines...);
+    }
+    else
+    {
+        return *this;
+    }
+}
+
+template <typename... U>
+CppSourceTarget &CppSourceTarget::interfaceCompileDefines(const string &cddName, const string &cddValue,
+                                                          U... compileDefines)
+{
+    useReqCompileDefinitions.emplace(cddName, cddValue);
+
+    if constexpr (sizeof...(compileDefines))
+    {
+        return interfaceCompileDefines(compileDefines...);
     }
     else
     {
