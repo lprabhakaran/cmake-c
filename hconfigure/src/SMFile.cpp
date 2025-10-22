@@ -25,7 +25,6 @@ import <utility>;
 #include "JConsts.hpp"
 #include "SMFile.hpp"
 #include "Settings.hpp"
-#include "StaticVector.hpp"
 #include "Utilities.hpp"
 #include <filesystem>
 #include <mutex>
@@ -481,11 +480,12 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
     if (!firstMessageSent)
     {
         firstMessageSent = true;
-        for (const auto &[str, node] : composingHeaders)
+        for (auto &[str, node] : composingHeaders)
         {
             // emplace in header-files to send
             N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .user = true};
             btcNonModule.headerFiles.emplace_back(std::move(h));
+            headerFiles.emplace(node);
         }
     }
 
@@ -692,9 +692,10 @@ bool SMFile::build(Builder &builder)
                 const HeaderFileOrUnit f = findHeaderFileOrUnit(headerName);
                 if (!f.data.smFile)
                 {
-                    printErrorMessage(
-                        FORMAT("No File in the target\n{}\n or in its dependencies\n{}\n provides this header \n{}.\n",
-                               target->name, target->getDependenciesString(), headerName));
+                    printErrorMessage(FORMAT("No File in the target\n{}\n or in its dependencies\n{}\n provides this "
+                                             "header \n{}.\n requested in {}\n",
+                                             target->name, target->getDependenciesString(), headerName,
+                                             node->filePath));
                 }
 
                 if (f.isUnit)
@@ -739,8 +740,8 @@ bool SMFile::build(Builder &builder)
                     {
                         if (!composingHeaders.emplace(headerName, f.data.node).second)
                         {
-                            printErrorMessage(
-                                FORMAT("A header-file already sent re-requested.\n{}\n", f.data.node->filePath));
+                            printErrorMessage(FORMAT("An already sent header-file \n{}\n re-requested in file.\n{}\n",
+                                                     f.data.node->filePath, node->filePath));
                         }
                         headerFiles.emplace(f.data.node);
                     }
@@ -764,14 +765,16 @@ bool SMFile::build(Builder &builder)
                 {
                     if (moduleName.contains(':'))
                     {
-                        printErrorMessage(FORMAT("No File in the target\n{}\n provides this module\n{}.\n",
-                                                 target->name, moduleName));
+                        printErrorMessage(
+                            FORMAT("No File in the target\n{}\n provides this module\n{}.\n requested in file {}",
+                                   target->name, moduleName, node->filePath));
                     }
                     else
                     {
-                        printErrorMessage(FORMAT(
-                            "No File in the target\n{}\n or in its dependencies\n{}\n provides this module\n{}.\n",
-                            target->name, target->getDependenciesString(), moduleName));
+                        printErrorMessage(FORMAT("No File in the target\n{}\n or in its dependencies\n{}\n provides "
+                                                 "this module\n{}.\n requested in file {}",
+                                                 target->name, target->getDependenciesString(), moduleName,
+                                                 node->filePath));
                     }
                 }
             }

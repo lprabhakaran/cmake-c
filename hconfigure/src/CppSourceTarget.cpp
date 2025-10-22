@@ -445,7 +445,7 @@ void CppSourceTarget::addHeaderUnit(const Node *headerNode, const string &logica
             }
             hu = interfaceBigHu;
         }
-        hu->composingHeaders.emplace(logicalName, headerNode);
+        hu->composingHeaders.emplace(logicalName, const_cast<Node *>(headerNode));
     }
     else
     {

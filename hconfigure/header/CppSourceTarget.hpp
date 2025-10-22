@@ -179,13 +179,13 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     CppSourceTarget &interfaceIncDirs(const string &include, const string &prefix, U... includeDirectoryString);
     template <typename... U>
     CppSourceTarget &publicIncDirsRE(const string &include, const string &prefix, const string &regexStr,
-                                    U... includeDirectoryString);
-    template <typename... U>
-    CppSourceTarget &privateIncDirsRE(const string &include, const string &prefix, const string &regexStr,
                                      U... includeDirectoryString);
     template <typename... U>
+    CppSourceTarget &privateIncDirsRE(const string &include, const string &prefix, const string &regexStr,
+                                      U... includeDirectoryString);
+    template <typename... U>
     CppSourceTarget &interfaceIncDirsRE(const string &include, const string &prefix, const string &regexStr,
-                                       U... includeDirectoryString);
+                                        U... includeDirectoryString);
     template <typename... U> CppSourceTarget &publicIncludesSource(const string &include, U... includeDirectoryString);
     template <typename... U> CppSourceTarget &privateIncludesSource(const string &include, U... includeDirectoryString);
     template <typename... U>
@@ -701,9 +701,9 @@ CppSourceTarget &CppSourceTarget::interfaceHUDirsRE(const string &include, const
     }
 }
 
-
 template <typename... U>
-CppSourceTarget &CppSourceTarget::publicIncDirs(const string &include, const string &prefix, U... includeDirectoryString)
+CppSourceTarget &CppSourceTarget::publicIncDirs(const string &include, const string &prefix,
+                                                U... includeDirectoryString)
 {
 
     if constexpr (bsMode == BSMode::CONFIGURE)
@@ -727,7 +727,7 @@ CppSourceTarget &CppSourceTarget::publicIncDirs(const string &include, const str
 
 template <typename... U>
 CppSourceTarget &CppSourceTarget::privateIncDirs(const string &include, const string &prefix,
-                                                U... includeDirectoryString)
+                                                 U... includeDirectoryString)
 {
     if constexpr (bsMode == BSMode::CONFIGURE)
     {
@@ -750,7 +750,7 @@ CppSourceTarget &CppSourceTarget::privateIncDirs(const string &include, const st
 
 template <typename... U>
 CppSourceTarget &CppSourceTarget::interfaceIncDirs(const string &include, const string &prefix,
-                                                  U... includeDirectoryString)
+                                                   U... includeDirectoryString)
 {
     if constexpr (bsMode == BSMode::CONFIGURE)
     {
@@ -773,7 +773,7 @@ CppSourceTarget &CppSourceTarget::interfaceIncDirs(const string &include, const 
 
 template <typename... U>
 CppSourceTarget &CppSourceTarget::publicIncDirsRE(const string &include, const string &prefix, const string &regexStr,
-                                                 U... includeDirectoryString)
+                                                  U... includeDirectoryString)
 {
 
     if constexpr (bsMode == BSMode::CONFIGURE)
@@ -797,7 +797,7 @@ CppSourceTarget &CppSourceTarget::publicIncDirsRE(const string &include, const s
 
 template <typename... U>
 CppSourceTarget &CppSourceTarget::privateIncDirsRE(const string &include, const string &prefix, const string &regexStr,
-                                                  U... includeDirectoryString)
+                                                   U... includeDirectoryString)
 {
     if constexpr (bsMode == BSMode::CONFIGURE)
     {
@@ -819,8 +819,8 @@ CppSourceTarget &CppSourceTarget::privateIncDirsRE(const string &include, const 
 }
 
 template <typename... U>
-CppSourceTarget &CppSourceTarget::interfaceIncDirsRE(const string &include, const string &prefix, const string &regexStr,
-                                                    U... includeDirectoryString)
+CppSourceTarget &CppSourceTarget::interfaceIncDirsRE(const string &include, const string &prefix,
+                                                     const string &regexStr, U... includeDirectoryString)
 {
     if constexpr (bsMode == BSMode::CONFIGURE)
     {

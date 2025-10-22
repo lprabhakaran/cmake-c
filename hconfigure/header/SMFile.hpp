@@ -99,7 +99,7 @@ struct SMFile : SourceNode // Scanned Module Rule
     // Those header-files which are #included in this module or hu. These are initialized from config-cache as big-hu
     // have these. While Source::headerFiles have all the header-files of ours and our dependencies for accurate
     // rebuilds.
-    flat_hash_map<string, const Node *> composingHeaders;
+    flat_hash_map<string, Node *> composingHeaders;
     flat_hash_set<SMFile *> allSMFileDependencies;
 
     RunCommand run;
