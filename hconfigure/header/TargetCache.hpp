@@ -58,8 +58,6 @@ struct ConfigCache
         struct InclNode
         {
             Node *node;
-            bool isStandard = false;
-            bool ignoreHeaderDeps = false;
         };
         struct HuNode
         {

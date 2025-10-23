@@ -36,7 +36,6 @@ class SourceNode : public ObjectFile
     CppSourceTarget *target;
     const Node *node;
     uint32_t indexInBuildCache = -1;
-    bool ignoreHeaderDeps = false;
     SourceNode(CppSourceTarget *target_, const Node *node_);
 
   protected:

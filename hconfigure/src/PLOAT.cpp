@@ -113,7 +113,7 @@ void PLOAT::updateBTarget(Builder &builder, const unsigned short round, bool &is
         {
             for (const LibDirNode &libDirNode : PLOAT->useReqLibraryDirs)
             {
-                reqLibraryDirs.emplace_back(libDirNode.node, libDirNode.isStandard);
+                reqLibraryDirs.emplace_back(libDirNode.node);
             }
         }
 
@@ -121,7 +121,7 @@ void PLOAT::updateBTarget(Builder &builder, const unsigned short round, bool &is
         {
             for (const LibDirNode &libDirNode : ploat->useReqLibraryDirs)
             {
-                reqLibraryDirs.emplace_back(libDirNode.node, libDirNode.isStandard);
+                reqLibraryDirs.emplace_back(libDirNode.node);
             }
         }
 
@@ -159,7 +159,7 @@ void PLOAT::readCacheAtBuildTime()
     for (uint32_t i = 0; i < size; ++i)
     {
         Node *node = readHalfNode(configCache.data(), configCacheBytesRead);
-        reqLibraryDirs.emplace_back(node, true);
+        reqLibraryDirs.emplace_back(node);
     }
 
     size = readUint32(configCache.data(), configCacheBytesRead);
@@ -167,7 +167,7 @@ void PLOAT::readCacheAtBuildTime()
     for (uint32_t i = 0; i < size; ++i)
     {
         Node *node = readHalfNode(configCache.data(), configCacheBytesRead);
-        useReqLibraryDirs.emplace_back(node, true);
+        useReqLibraryDirs.emplace_back(node);
     }
 }
 

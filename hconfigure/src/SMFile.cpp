@@ -147,7 +147,7 @@ void SourceNode::parseDepsFromMSVCTextOutput(string &output, const bool isClang)
 {
     const string includeFileNote = "Note: including file:";
 
-    if (ignoreHeaderDeps || realBTargets[0].exitStatus != EXIT_SUCCESS)
+    if (target->ignoreHeaderDeps || realBTargets[0].exitStatus != EXIT_SUCCESS)
     {
         string str = output;
         output.clear();
@@ -253,7 +253,7 @@ void SourceNode::parseDepsFromMSVCTextOutput(string &output, const bool isClang)
 
 void SourceNode::parseDepsFromGCCDepsOutput()
 {
-    if (ignoreHeaderDeps)
+    if (target->ignoreHeaderDeps)
     {
         return;
     }

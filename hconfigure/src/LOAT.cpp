@@ -679,23 +679,10 @@ string LOAT::getLinkOrArchiveCommandPrint()
 
         for (const LibDirNode &libDirNode : reqLibraryDirs)
         {
-            if (libDirNode.isStandard)
+            if (lcpSettings.libraryDirs.printLevel != PathPrintLevel::NO)
             {
-                if (lcpSettings.standardLibraryDirs.printLevel != PathPrintLevel::NO)
-                {
-                    linkOrArchiveCommandPrint +=
-                        getLibraryDirectoryFlag() +
-                        getReducedPath(libDirNode.node->filePath, lcpSettings.standardLibraryDirs) + " ";
-                }
-            }
-            else
-            {
-                if (lcpSettings.libraryDirs.printLevel != PathPrintLevel::NO)
-                {
-                    linkOrArchiveCommandPrint += getLibraryDirectoryFlag() +
-                                                 getReducedPath(libDirNode.node->filePath, lcpSettings.libraryDirs) +
-                                                 " ";
-                }
+                linkOrArchiveCommandPrint += getLibraryDirectoryFlag() +
+                                             getReducedPath(libDirNode.node->filePath, lcpSettings.libraryDirs) + " ";
             }
         }
 

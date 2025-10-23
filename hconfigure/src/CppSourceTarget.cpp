@@ -301,16 +301,19 @@ void CppSourceTarget::actuallyAddModuleFileConfigTime(Node *node, string exportN
     }
 }
 
-static void emplaceInHeaderNameMapping(flat_hash_map<string_view, HeaderFileOrUnit> &headerNameMapping,
-                                       string_view headerName, HeaderFileOrUnit type, const bool suppressError)
+void CppSourceTarget::emplaceInHeaderNameMapping(flat_hash_map<string_view, HeaderFileOrUnit> &headerNameMapping,
+                                                 string_view headerName, HeaderFileOrUnit type,
+                                                 const bool suppressError)
 {
     if (const auto &[it, ok] = headerNameMapping.emplace(headerName, type); !ok && !suppressError)
     {
-        printErrorMessage(FORMAT("headerNameMapping already has headerName {}.\n", string(headerName)));
+        printErrorMessage(
+            FORMAT("In CppSourceTarget {}\nheaderNameMapping already has headerName {}.\n", name, string(headerName)));
     }
 }
 
-static void emplaceInNodesType(flat_hash_map<const Node *, FileType> &nodesType, const Node *node, FileType type)
+void CppSourceTarget::emplaceInNodesType(flat_hash_map<const Node *, FileType> &nodesType, const Node *node,
+                                         FileType type)
 {
     if (node->filePath.contains("yvals_core.h"))
     {
@@ -318,7 +321,8 @@ static void emplaceInNodesType(flat_hash_map<const Node *, FileType> &nodesType,
     }
     if (const auto &[it, ok] = nodesType.emplace(node, type); !ok && it->second != type)
     {
-        printErrorMessage(FORMAT("nodesTypeMap already has Node {} but with different type\n", node->filePath));
+        printErrorMessage(FORMAT("In CppSourceTarget {}\nnodesTypeMap already has Node {} but with different type\n",
+                                 name, node->filePath));
     }
 }
 
@@ -534,12 +538,14 @@ void CppSourceTarget::addHeaderUnit(const string &logicalName, const Node *heade
 
     if (addInReq)
     {
+        emplaceInHeaderNameMapping(reqHeaderNameMapping, *p, HeaderFileOrUnit{hu, false}, suppressError);
         emplaceInNodesType(reqNodesType, headerUnit, FileType::HEADER_UNIT);
         hu->isReqDep = true;
     }
 
     if (addInUseReq)
     {
+        emplaceInHeaderNameMapping(useReqHeaderNameMapping, *p, HeaderFileOrUnit{hu, false}, suppressError);
         emplaceInNodesType(useReqNodesType, headerUnit, FileType::HEADER_UNIT);
         hu->isUseReqDep = true;
     }
@@ -660,11 +666,11 @@ void CppSourceTarget::addHeaderUnitOrFileDirMSVC(const Node *includeDir, bool is
 
             if (isHeaderFile)
             {
-                addHeaderFile( *logicalName,headerNode, true, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
+                addHeaderFile(*logicalName, headerNode, true, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
             }
             else
             {
-                addHeaderUnit( *logicalName, headerNode, true, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
+                addHeaderUnit(*logicalName, headerNode, true, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
             }
         }
     }
@@ -888,58 +894,23 @@ template <typename T, typename U> void adjustBuildCache(vector<T> &oldCache, con
     oldCache = std::move(*newCache);
 }
 
-template <typename T> static const InclNode &getNode(const T &t)
-{
-    if constexpr (std::is_same_v<T, HuTargetPlusDir>)
-    {
-        return t.inclNode;
-    }
-    else if constexpr (std::is_same_v<T, InclNode>)
-    {
-        return t;
-    }
-}
-
-template <typename T> void writeIncDirsAtConfigTime(vector<char> &buffer, const vector<T> &include)
+void writeIncDirsAtConfigTime(vector<char> &buffer, const vector<InclNode> &include)
 {
     writeUint32(buffer, include.size());
-    for (auto &elem : include)
+    for (auto &inclNode : include)
     {
-        const InclNode &inclNode = getNode(elem);
         writeNode(buffer, inclNode.node);
-        writeBool(buffer, inclNode.isStandard);
-        writeBool(buffer, inclNode.ignoreHeaderDeps);
-        if constexpr (std::is_same_v<T, HuTargetPlusDir>)
-        {
-            auto &headerUnitNode = static_cast<const HeaderUnitNode &>(inclNode);
-
-            writeUint32(buffer, headerUnitNode.targetCacheIndex);
-            writeUint32(buffer, headerUnitNode.headerUnitIndex);
-        }
     }
 }
 
-template <typename T>
-void readInclDirsAtBuildTime(const char *ptr, uint32_t &bytesRead, vector<T> &include, CppSourceTarget *target)
+void readInclDirsAtBuildTime(const char *ptr, uint32_t &bytesRead, vector<InclNode> &include, bool isStandard,
+                             bool ignoreHeaderDeps)
 {
     const uint32_t reserveSize = readUint32(ptr, bytesRead);
-    include.reserve(reserveSize * sizeof(T) + sizeof(uint32_t));
+    include.reserve(reserveSize);
     for (uint32_t i = 0; i < reserveSize; ++i)
     {
-        Node *node = readHalfNode(ptr, bytesRead);
-        bool isStandard = readBool(ptr, bytesRead);
-        bool ignoreHeaderDeps = readBool(ptr, bytesRead);
-        if constexpr (std::is_same_v<T, HuTargetPlusDir>)
-        {
-            const bool targetCacheIndex = readUint32(ptr, bytesRead);
-            const bool headerUnitIndex = readUint32(ptr, bytesRead);
-            include.emplace_back(HeaderUnitNode(node, isStandard, ignoreHeaderDeps, targetCacheIndex, headerUnitIndex),
-                                 target);
-        }
-        else
-        {
-            include.emplace_back(node, isStandard, ignoreHeaderDeps);
-        }
+        include.emplace_back(readHalfNode(ptr, bytesRead), isStandard, ignoreHeaderDeps);
     }
 }
 
@@ -1233,8 +1204,8 @@ void CppSourceTarget::readConfigCacheAtBuildTime()
 
     if (configuration->evaluate(TreatModuleAsSource::YES))
     {
-        readInclDirsAtBuildTime(ptr, configRead, reqIncls, this);
-        readInclDirsAtBuildTime(ptr, configRead, useReqIncls, this);
+        readInclDirsAtBuildTime(ptr, configRead, reqIncls, isStandard, ignoreHeaderDeps);
+        readInclDirsAtBuildTime(ptr, configRead, useReqIncls, isStandard, ignoreHeaderDeps);
     }
     else
     {

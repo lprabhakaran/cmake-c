@@ -95,7 +95,7 @@ void Configuration::initialize()
                     }
                     if (!found)
                     {
-                        stdCppTarget->getLOAT().reqLibraryDirs.emplace_back(node, true);
+                        stdCppTarget->getLOAT().reqLibraryDirs.emplace_back(node);
                     }
                 }
 

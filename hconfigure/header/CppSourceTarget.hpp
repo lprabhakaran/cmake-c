@@ -85,6 +85,9 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     SMFile *privateBigHu = nullptr;
     SMFile *interfaceBigHu = nullptr;
 
+    bool isStandard = false;
+    bool ignoreHeaderDeps = false;
+
     void setCompileCommand();
     void setSourceCompileCommandPrintFirstHalf();
     string &getSourceCompileCommandPrintFirstHalf();
@@ -115,6 +118,9 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
 
     void actuallyAddSourceFileConfigTime(Node *node);
     void actuallyAddModuleFileConfigTime(Node *node, string exportName);
+    void emplaceInHeaderNameMapping(flat_hash_map<string_view, HeaderFileOrUnit> &headerNameMapping,
+                                    string_view headerName, HeaderFileOrUnit type, bool suppressError);
+    void emplaceInNodesType(flat_hash_map<const Node *, FileType> &nodesType, const Node *node, FileType type);
     void removeHeaderFile(const string &logicalName, bool addInReq, bool addInUseReq);
     void removeHeaderUnit(const Node *headerNode, const string &logicalName, bool addInReq, bool addInUseReq);
     void addHeaderFile(const string &logicalName, const Node *headerFile, bool suppressError, bool addInReq,
