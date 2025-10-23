@@ -1,5 +1,5 @@
 
-#include "../header/ObjectFile.hpp"
+#include "ObjectFile.hpp"
 
 ObjectFile::ObjectFile() : BTarget("", true, false)
 {

@@ -100,8 +100,16 @@ void SourceNode::completeCompilation()
         parseHeaderDeps(output);
     }
 
-    const string printCommand =
-        target->getSourceCompileCommandPrintFirstHalf() + target->getCompileCommandPrintSecondPart(*this);
+    string printCommand;
+    if (output.empty())
+    {
+        printCommand = FORMAT("Building CppSourceFile {} of target {}", node->filePath, target->name);
+    }
+    else
+    {
+        printCommand = compileCommand;
+    }
+
     CacheWriteManager::addNewEntry(exitStatus, target, this, settings.pcSettings.compileCommandColor, printCommand,
                                    output);
 }
@@ -221,7 +229,7 @@ void SourceNode::parseDepsFromMSVCTextOutput(string &output, const bool isClang)
             }
             else
             {
-                printErrorMessage(FORMAT("Empty Header Include {}\n", line));
+                printErrorMessage(FORMAT("Empty Header Include {}\n", std::string(line)));
             }
         }
         else
@@ -436,7 +444,7 @@ void SMFile::makeAndSendBTCModule(SMFile &mod)
 
 void SMFile::makeAndSendBTCNonModule(SMFile &hu)
 {
-    if (node->filePath.contains("type_traits"))
+    if (node->filePath.ends_with("public-10.hpp"))
     {
         bool breakpoint = true;
     }
@@ -485,7 +493,7 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
         }
     }
 
-    if (node->filePath.ends_with("main.cpp"))
+    if (node->filePath.ends_with("public-10.hpp"))
     {
         bool brekapoint = true;
     }
@@ -511,20 +519,20 @@ void SMFile::duplicateHeaderFileOrUnitError(const string &headerName, HeaderFile
                         headerName, node->filePath, target->name);
     if (first.isUnit)
     {
-        str += FORMAT("Header-Unit {} of target {}", first.data.smFile->node->filePath, firstTarget->name);
+        str += FORMAT("Header-Unit {} of target {}\n", first.data.smFile->node->filePath, firstTarget->name);
     }
     else
     {
-        str += FORMAT("Header-File {} of target {}", first.data.node->filePath, firstTarget->name);
+        str += FORMAT("Header-File {} of target {}\n", first.data.node->filePath, firstTarget->name);
     }
 
     if (second.isUnit)
     {
-        str += FORMAT("Header-Unit {} of target {}", second.data.smFile->node->filePath, secondTarget->name);
+        str += FORMAT("Header-Unit {} of target {}\n", second.data.smFile->node->filePath, secondTarget->name);
     }
     else
     {
-        str += FORMAT("Header-File {} of target {}", second.data.node->filePath, secondTarget->name);
+        str += FORMAT("Header-File {} of target {}\n", second.data.node->filePath, secondTarget->name);
     }
 
     printErrorMessage(str);
@@ -602,7 +610,7 @@ HeaderFileOrUnit SMFile::findHeaderFileOrUnit(const string &headerName)
 
 bool SMFile::build(Builder &builder)
 {
-    if (node->filePath.ends_with("main.cpp"))
+    if (node->filePath.ends_with("public-10.hpp"))
     {
         bool breakpoint = true;
     }
@@ -649,8 +657,17 @@ bool SMFile::build(Builder &builder)
                     logicalName = lastMessage.logicalName;
                 }
 
-                const string printCommand =
-                    target->getSourceCompileCommandPrintFirstHalf() + target->getCompileCommandPrintSecondPart(*this);
+                string printCommand;
+                if (lastMessage.errorOutput.empty())
+                {
+                    printCommand = FORMAT("Compiled CppModuleFile {} of target {}", node->filePath, target->name);
+                }
+                else
+                {
+                    printCommand = "\"" + target->configuration->compilerFeatures.compiler.bTPath.generic_string() +
+                                   "\" " + target->compileCommand + getCompileCommand();
+                }
+
                 CacheWriteManager::addNewEntry(exitStatus, target, this, settings.pcSettings.compileCommandColor,
                                                printCommand, lastMessage.errorOutput);
                 return false;
@@ -661,6 +678,12 @@ bool SMFile::build(Builder &builder)
             if (requestType == N2978::CTB::NON_MODULE)
             {
                 auto &[isHURequested, headerName] = reinterpret_cast<N2978::CTBNonModule &>(buffer);
+
+                if (node->filePath.ends_with("public-10.hpp"))
+                {
+                    N2978::CTBNonModule non_module = static_cast<N2978::CTBNonModule>(buffer);
+                    bool breakpoint = true;
+                }
 
                 const HeaderFileOrUnit f = findHeaderFileOrUnit(headerName);
                 if (!f.data.smFile)
@@ -695,7 +718,7 @@ bool SMFile::build(Builder &builder)
                         firstMessageSent = true;
                         for (const auto &[str, node] : composingHeaders)
                         {
-                            if (node == f.data.node)
+                            if (f.data.node == node && headerName == str)
                             {
                                 headerFiles.emplace(f.data.node);
                                 addedInComposingHeader = true;
@@ -760,6 +783,12 @@ bool SMFile::build(Builder &builder)
             }
 
             RealBTarget &foundRb = found->realBTargets[0];
+
+            if (node->filePath.ends_with("public-10.hpp"))
+            {
+                N2978::CTBNonModule non_module = static_cast<N2978::CTBNonModule>(buffer);
+                bool breakpoint = true;
+            }
             if (foundRb.updateStatus != UpdateStatus::UPDATED)
             {
                 waitingFor = found;
@@ -834,8 +863,9 @@ void SMFile::updateBTarget(Builder &builder, const unsigned short round, bool &i
                 const string compileCommand = "\"" +
                                               target->configuration->compilerFeatures.compiler.bTPath.generic_string() +
                                               "\" " + target->compileCommand + getCompileCommand();
-                if (!node->filePath.ends_with("main.cpp"))
+                if (node->filePath.ends_with("public-10.hpp"))
                 {
+                    bool breakpoint = true;
                     run.startProcess(compileCommand, true);
                 }
                 else
@@ -989,13 +1019,13 @@ void SMFile::setFileStatusAndPopulateAllDependencies()
             if (depModName.contains(':'))
             {
                 printErrorMessage(
-                    FORMAT("No File in the target\n{}\n provides this module\n{}.\n", target->name, depModName));
+                    FORMAT("No File in the target\n{}\n provides this module\n{}.\n", target->name, string(depModName)));
             }
             else
             {
                 printErrorMessage(
                     FORMAT("No File in the target\n{}\n or in its dependencies\n{}\n provides this module\n{}.\n",
-                           target->name, target->getDependenciesString(), depModName));
+                           target->name, target->getDependenciesString(), string(depModName)));
             }
         }
 

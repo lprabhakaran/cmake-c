@@ -935,7 +935,7 @@ struct CppCompilerFeatures : FeatureConvenienceFunctions<CppCompilerFeatures>
     WarningsAsErrors warningsAsErrors = WarningsAsErrors::OFF;
     ExceptionHandling exceptionHandling = ExceptionHandling::ON;
     AsyncExceptions asyncExceptions = AsyncExceptions::OFF;
-    ExternCNoThrow externCNoThrow = ExternCNoThrow::OFF;
+    ExternCNoThrow externCNoThrow = ExternCNoThrow::ON;
     RTTI rtti = RTTI::ON;
 
     // Used only for GCC

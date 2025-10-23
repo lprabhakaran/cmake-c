@@ -10,7 +10,7 @@
 #include <fstream>
 #include <stacktrace>
 
-using fmt::print, std::filesystem::current_path, std::filesystem::directory_iterator, std::ifstream, std::ofstream;
+using std::filesystem::current_path, std::filesystem::directory_iterator, std::ifstream, std::ofstream;
 
 string getFileNameJsonOrOut(const string &name)
 {
@@ -118,7 +118,7 @@ void printMessage(const string &message)
     }
     else
     {
-        print("{}", message);
+        fmt::print("{}", message);
         fflush(stdout);
     }
 }
@@ -135,7 +135,7 @@ void printMessageColor(const string &message, uint32_t color)
         {
             bool breakpoint = true;
         }
-        print(fg(static_cast<fmt::color>(color)), "{}", message);
+        fmt::print(fg(static_cast<fmt::color>(color)), "{}", message);
     }
 }
 
@@ -151,12 +151,12 @@ void printErrorMessage(const string &message)
     }
     else
     {
-        // print(stderr, "Error Happened.\n");
-        print(stderr, "{}", message);
+        // fmt::print(stderr, "Error Happened.\n");
+        fmt::print(stderr, "{}", message);
     }
 
 #ifndef NDEBUG
-    //  print(stderr, "{}", to_string(std::stacktrace::current()));
+    //  fmt::print(stderr, "{}", to_string(std::stacktrace::current()));
 #endif
 
     errorExit();
@@ -170,7 +170,7 @@ void printErrorMessageNoReturn(const string &message)
     }
     else
     {
-        print(stderr, "{}", message);
+        fmt::print(stderr, "{}", message);
     }
 }
 
@@ -182,7 +182,7 @@ void printErrorMessageColor(const string &message, uint32_t color)
     }
     else
     {
-        print(stderr, fg(static_cast<fmt::color>(color)), "{}", message);
+        fmt::print(stderr, fg(static_cast<fmt::color>(color)), "{}", message);
     }
 }
 

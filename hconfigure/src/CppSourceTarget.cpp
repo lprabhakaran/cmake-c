@@ -55,8 +55,8 @@ void CppSourceTarget::readModuleMapFromDir(const string &dir)
 
                 if (!pendingLogicalName.empty())
                 {
-                    printErrorMessage(
-                        FORMAT("Error: incomplete entry - missing file path for logical name: {}", pendingLogicalName));
+                    printErrorMessage(FORMAT("Error: incomplete entry - missing file path for logical name: {}",
+                                             string(pendingLogicalName)));
                 }
 
                 currentModeIndex = newModeIndex;
@@ -306,7 +306,7 @@ static void emplaceInHeaderNameMapping(flat_hash_map<string_view, HeaderFileOrUn
 {
     if (const auto &[it, ok] = headerNameMapping.emplace(headerName, type); !ok && !suppressError)
     {
-        printErrorMessage(FORMAT("headerNameMapping already has headerName {}.\n", headerName));
+        printErrorMessage(FORMAT("headerNameMapping already has headerName {}.\n", string(headerName)));
     }
 }
 
@@ -322,25 +322,55 @@ static void emplaceInNodesType(flat_hash_map<const Node *, FileType> &nodesType,
     }
 }
 
-void CppSourceTarget::removeHeaderFile(const Node *headerNode, const string &logicalName, const bool addInReq,
-                                       const bool addInUseReq)
+void CppSourceTarget::removeHeaderFile(const string &logicalName, const bool addInReq, const bool addInUseReq)
 {
     string *p = new string(logicalName);
-    if (headerNode->filePath.contains("workaround.hpp"))
-    {
-        bool breakpoint = true;
-    }
     lowerCaseOnWindows(p->data(), p->size());
+
     if (addInReq)
     {
-        reqHeaderNameMapping.erase(*p);
-        reqNodesType.erase(headerNode);
+        Node *headerNode = nullptr;
+        if (const auto &it = reqHeaderNameMapping.find(*p); it == reqHeaderNameMapping.end())
+        {
+            printErrorMessage(FORMAT("Could not find the header {}\n in removeHeaderFile in target {}\n", *p, name));
+        }
+        else
+        {
+            headerNode = it->second.data.node;
+            reqHeaderNameMapping.erase(it);
+        }
+
+        if (const auto &it = reqNodesType.find(headerNode); it == reqNodesType.end())
+        {
+            HMAKE_HMAKE_INTERNAL_ERROR
+        }
+        else
+        {
+            reqNodesType.erase(headerNode);
+        }
     }
 
     if (addInUseReq)
     {
-        useReqHeaderNameMapping.erase(*p);
-        useReqNodesType.erase(headerNode);
+        Node *headerNode = nullptr;
+        if (const auto &it = useReqHeaderNameMapping.find(*p); it == useReqHeaderNameMapping.end())
+        {
+            printErrorMessage(FORMAT("Could not find the header {}\n in removeHeaderFile in target {}\n", *p, name));
+        }
+        else
+        {
+            headerNode = it->second.data.node;
+            useReqHeaderNameMapping.erase(it);
+        }
+
+        if (const auto &it = useReqNodesType.find(headerNode); it == useReqNodesType.end())
+        {
+            HMAKE_HMAKE_INTERNAL_ERROR
+        }
+        else
+        {
+            useReqNodesType.erase(headerNode);
+        }
     }
 }
 
@@ -350,13 +380,47 @@ void CppSourceTarget::removeHeaderUnit(const Node *headerNode, const string &log
     string *p = new string(logicalName);
     lowerCaseOnWindows(p->data(), p->size());
     bool found = false;
-    for (auto it = huDeps.begin(); it != huDeps.end(); ++it)
+    if (configuration->evaluate(BigHeaderUnit::YES))
     {
-        if ((*it)->node == headerNode)
+        SMFile *bigHu = nullptr;
+        if (addInReq && addInUseReq)
         {
-            huDeps.erase(it);
-            found = true;
-            break;
+            bigHu = publicBigHu;
+        }
+        else if (addInReq)
+        {
+            bigHu = privateBigHu;
+        }
+        else if (addInUseReq)
+        {
+            bigHu = interfaceBigHu;
+        }
+
+        if (!std::erase(bigHu->logicalNames, *p))
+        {
+            printErrorMessage(
+                FORMAT("Could not find logical-name {} to remove in public-header-unit in target {}\n.", *p, name));
+        }
+        if (!bigHu->composingHeaders.erase(*p))
+        {
+            printErrorMessage(
+                FORMAT("Could not find composing-header {} to remove in public-header-unit in target {}\n.", *p, name));
+        }
+        if (bigHu->logicalNames.empty())
+        {
+            delete bigHu;
+        }
+    }
+    else
+    {
+        for (auto it = huDeps.begin(); it != huDeps.end(); ++it)
+        {
+            if ((*it)->node == headerNode)
+            {
+                huDeps.erase(it);
+                found = true;
+                break;
+            }
         }
     }
 
@@ -407,12 +471,16 @@ void CppSourceTarget::addHeaderUnit(const Node *headerNode, const string &logica
                                     const bool addInReq, const bool addInUseReq, const bool isStandard,
                                     const bool ignoreHeaderDeps)
 {
+    if (logicalName.empty())
+    {
+        bool breakpoint = true;
+    }
+
     string *p = new string(logicalName);
     lowerCaseOnWindows(p->data(), p->size());
 
     SMFile *hu = nullptr;
 
-    bool emplaceInLogicalNames = false;
     if (configuration->evaluate(BigHeaderUnit::YES))
     {
         if (addInReq && addInUseReq)

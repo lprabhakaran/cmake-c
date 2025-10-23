@@ -115,7 +115,7 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
 
     void actuallyAddSourceFileConfigTime(Node *node);
     void actuallyAddModuleFileConfigTime(Node *node, string exportName);
-    void removeHeaderFile(const Node *headerNode, const string &logicalName, bool addInReq, bool addInUseReq);
+    void removeHeaderFile(const string &logicalName, bool addInReq, bool addInUseReq);
     void removeHeaderUnit(const Node *headerNode, const string &logicalName, bool addInReq, bool addInUseReq);
     void addHeaderFile(const Node *headerNode, const string &logicalName, bool suppressError, bool addInReq,
                        bool addInUseReq, bool isStandard, bool ignoreHeaderDeps);
