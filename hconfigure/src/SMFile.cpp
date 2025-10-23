@@ -423,9 +423,12 @@ void SMFile::makeAndSendBTCModule(SMFile &mod)
             }
             btcModule.modDeps.emplace_back(std::move(dep));
 
-            for (Node *headerFile : smFile->headerFiles)
+            if (!target->ignoreHeaderDeps)
             {
-                headerFiles.emplace(headerFile);
+                for (Node *headerFile : smFile->headerFiles)
+                {
+                    headerFiles.emplace(headerFile);
+                }
             }
         }
     }
@@ -434,6 +437,11 @@ void SMFile::makeAndSendBTCModule(SMFile &mod)
     {
         printErrorMessage(FORMAT("send-message fail of module-file {}\n for module-file {}\n of target {}\n.",
                                  mod.node->filePath, node->filePath, target->name));
+    }
+
+    if (target->ignoreHeaderDeps)
+    {
+        return;
     }
 
     for (Node *headerFile : mod.headerFiles)
@@ -466,29 +474,36 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
             // emplace in header-files to send
             N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .user = true};
             btcNonModule.headerFiles.emplace_back(std::move(h));
-            headerFiles.emplace(node);
+
+            if (!target->ignoreHeaderDeps)
+            {
+                headerFiles.emplace(node);
+            }
         }
     }
 
-    for (SMFile *smFile : hu.allSMFileDependencies)
+    for (SMFile *huDep : hu.allSMFileDependencies)
     {
-        if (allSMFileDependencies.emplace(smFile).second)
+        if (allSMFileDependencies.emplace(huDep).second)
         {
             N2978::HuDep dep;
 
-            dep.file.filePath = smFile->interfaceNode->filePath;
-            dep.user = !smFile->isSystem;
+            dep.file.filePath = huDep->interfaceNode->filePath;
+            dep.user = !huDep->isSystem;
 
-            for (const string &str : smFile->logicalNames)
+            for (const string &str : huDep->logicalNames)
             {
                 dep.logicalNames.emplace_back(str);
             }
 
             btcNonModule.huDeps.emplace_back(std::move(dep));
 
-            for (Node *headerFile : smFile->headerFiles)
+            if (!target->ignoreHeaderDeps)
             {
-                headerFiles.emplace(headerFile);
+                for (Node *headerFile : huDep->headerFiles)
+                {
+                    headerFiles.emplace(headerFile);
+                }
             }
         }
     }
@@ -503,6 +518,11 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
         printErrorMessage(FORMAT("send-message fail of header-unit {}\n for {} {}\n of target {}\n.", hu.node->filePath,
                                  type == SM_FILE_TYPE::HEADER_UNIT ? "header-unit" : "module-filee", node->filePath,
                                  target->name));
+    }
+
+    if (target->ignoreHeaderDeps)
+    {
+        return;
     }
 
     for (Node *headerFile : hu.headerFiles)
@@ -718,9 +738,13 @@ bool SMFile::build(Builder &builder)
                         firstMessageSent = true;
                         for (const auto &[str, node] : composingHeaders)
                         {
-                            if (f.data.node == node && headerName == str)
+                            if (!target->ignoreHeaderDeps)
                             {
                                 headerFiles.emplace(f.data.node);
+                            }
+
+                            if (f.data.node == node && headerName == str)
+                            {
                                 addedInComposingHeader = true;
                                 continue;
                             }
@@ -728,7 +752,6 @@ bool SMFile::build(Builder &builder)
                             // emplace in header-files to send
                             N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .user = true};
                             response.headerFiles.emplace_back(std::move(h));
-                            headerFiles.emplace(f.data.node);
                         }
                     }
 
@@ -739,7 +762,11 @@ bool SMFile::build(Builder &builder)
                             printErrorMessage(FORMAT("An already sent header-file \n{}\n re-requested in file.\n{}\n",
                                                      f.data.node->filePath, node->filePath));
                         }
-                        headerFiles.emplace(f.data.node);
+
+                        if (!target->ignoreHeaderDeps)
+                        {
+                            headerFiles.emplace(f.data.node);
+                        }
                     }
 
                     if (const auto &r2 = ipcManager->sendMessage(response); !r2)
