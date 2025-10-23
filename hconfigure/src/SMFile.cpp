@@ -1018,8 +1018,8 @@ void SMFile::setFileStatusAndPopulateAllDependencies()
         {
             if (depModName.contains(':'))
             {
-                printErrorMessage(
-                    FORMAT("No File in the target\n{}\n provides this module\n{}.\n", target->name, string(depModName)));
+                printErrorMessage(FORMAT("No File in the target\n{}\n provides this module\n{}.\n", target->name,
+                                         string(depModName)));
             }
             else
             {

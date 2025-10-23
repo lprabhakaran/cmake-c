@@ -92,27 +92,27 @@ void CppSourceTarget::readModuleMapFromDir(const string &dir)
 
         if (currentModeIndex == 0)
         {
-            addHeaderUnit(node, string(pendingLogicalName), false, true, true, false, false);
+            addHeaderUnit(string(pendingLogicalName), node, false, true, true, false, false);
         }
         else if (currentModeIndex == 1)
         {
-            addHeaderUnit(node, string(pendingLogicalName), false, true, false, false, false);
+            addHeaderUnit(string(pendingLogicalName), node, false, true, false, false, false);
         }
         else if (currentModeIndex == 2)
         {
-            addHeaderUnit(node, string(pendingLogicalName), false, false, true, false, false);
+            addHeaderUnit(string(pendingLogicalName), node, false, false, true, false, false);
         }
         else if (currentModeIndex == 3)
         {
-            addHeaderUnit(node, string(pendingLogicalName), false, true, true, false, false);
+            addHeaderUnit(string(pendingLogicalName), node, false, true, true, false, false);
         }
         else if (currentModeIndex == 4)
         {
-            addHeaderUnit(node, string(pendingLogicalName), false, true, false, false, false);
+            addHeaderUnit(string(pendingLogicalName), node, false, true, false, false, false);
         }
         else if (currentModeIndex == 5)
         {
-            addHeaderUnit(node, string(pendingLogicalName), false, false, true, false, false);
+            addHeaderUnit(string(pendingLogicalName), node, false, false, true, false, false);
         }
         else if (currentModeIndex == 6)
         {
@@ -442,12 +442,12 @@ void CppSourceTarget::removeHeaderUnit(const Node *headerNode, const string &log
     }
 }
 
-void CppSourceTarget::addHeaderFile(const Node *headerNode, const string &logicalName, const bool suppressError,
+void CppSourceTarget::addHeaderFile(const string &logicalName, const Node *headerFile, const bool suppressError,
                                     const bool addInReq, const bool addInUseReq, const bool isStandard,
                                     const bool ignoreHeaderDeps)
 {
     string *p = new string(logicalName);
-    if (headerNode->filePath.contains("workaround.hpp"))
+    if (headerFile->filePath.contains("workaround.hpp"))
     {
         bool breakpoint = true;
     }
@@ -455,19 +455,19 @@ void CppSourceTarget::addHeaderFile(const Node *headerNode, const string &logica
     if (addInReq)
     {
         emplaceInHeaderNameMapping(reqHeaderNameMapping, *p,
-                                   HeaderFileOrUnit{const_cast<Node *>(headerNode), isStandard}, suppressError);
-        emplaceInNodesType(reqNodesType, headerNode, FileType::HEADER_FILE);
+                                   HeaderFileOrUnit{const_cast<Node *>(headerFile), isStandard}, suppressError);
+        emplaceInNodesType(reqNodesType, headerFile, FileType::HEADER_FILE);
     }
 
     if (addInUseReq)
     {
         emplaceInHeaderNameMapping(useReqHeaderNameMapping, *p,
-                                   HeaderFileOrUnit{const_cast<Node *>(headerNode), isStandard}, suppressError);
-        emplaceInNodesType(useReqNodesType, headerNode, FileType::HEADER_FILE);
+                                   HeaderFileOrUnit{const_cast<Node *>(headerFile), isStandard}, suppressError);
+        emplaceInNodesType(useReqNodesType, headerFile, FileType::HEADER_FILE);
     }
 }
 
-void CppSourceTarget::addHeaderUnit(const Node *headerNode, const string &logicalName, bool suppressError,
+void CppSourceTarget::addHeaderUnit(const string &logicalName, const Node *headerUnit, bool suppressError,
                                     const bool addInReq, const bool addInUseReq, const bool isStandard,
                                     const bool ignoreHeaderDeps)
 {
@@ -513,20 +513,20 @@ void CppSourceTarget::addHeaderUnit(const Node *headerNode, const string &logica
             }
             hu = interfaceBigHu;
         }
-        hu->composingHeaders.emplace(logicalName, const_cast<Node *>(headerNode));
+        hu->composingHeaders.emplace(logicalName, const_cast<Node *>(headerUnit));
     }
     else
     {
         for (const SMFile *smFile : huDeps)
         {
-            if (smFile->node == headerNode)
+            if (smFile->node == headerUnit)
             {
                 printErrorMessage(FORMAT("Attempting to add {} twice in header-units in cpptarget {}.\n",
-                                         headerNode->filePath, name));
+                                         headerUnit->filePath, name));
             }
         }
 
-        hu = huDeps.emplace_back(new SMFile(this, headerNode));
+        hu = huDeps.emplace_back(new SMFile(this, headerUnit));
     }
 
     // if suppressError is to be added, then emplace here needs to be conditioned.
@@ -534,13 +534,13 @@ void CppSourceTarget::addHeaderUnit(const Node *headerNode, const string &logica
 
     if (addInReq)
     {
-        emplaceInNodesType(reqNodesType, headerNode, FileType::HEADER_UNIT);
+        emplaceInNodesType(reqNodesType, headerUnit, FileType::HEADER_UNIT);
         hu->isReqDep = true;
     }
 
     if (addInUseReq)
     {
-        emplaceInNodesType(useReqNodesType, headerNode, FileType::HEADER_UNIT);
+        emplaceInNodesType(useReqNodesType, headerUnit, FileType::HEADER_UNIT);
         hu->isUseReqDep = true;
     }
 
@@ -587,11 +587,11 @@ void CppSourceTarget::addHeaderUnitOrFileDir(const Node *includeDir, const strin
 
             if (isHeaderFile)
             {
-                addHeaderFile(headerNode, *logicalName, false, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
+                addHeaderFile(*logicalName, headerNode, false, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
             }
             else
             {
-                addHeaderUnit(headerNode, *logicalName, false, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
+                addHeaderUnit(*logicalName, headerNode, false, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
             }
         }
     }
@@ -660,11 +660,11 @@ void CppSourceTarget::addHeaderUnitOrFileDirMSVC(const Node *includeDir, bool is
 
             if (isHeaderFile)
             {
-                addHeaderFile(headerNode, *logicalName, true, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
+                addHeaderFile( *logicalName,headerNode, true, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
             }
             else
             {
-                addHeaderUnit(headerNode, *logicalName, true, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
+                addHeaderUnit( *logicalName, headerNode, true, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
             }
         }
     }

@@ -117,9 +117,9 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     void actuallyAddModuleFileConfigTime(Node *node, string exportName);
     void removeHeaderFile(const string &logicalName, bool addInReq, bool addInUseReq);
     void removeHeaderUnit(const Node *headerNode, const string &logicalName, bool addInReq, bool addInUseReq);
-    void addHeaderFile(const Node *headerNode, const string &logicalName, bool suppressError, bool addInReq,
+    void addHeaderFile(const string &logicalName, const Node *headerFile, bool suppressError, bool addInReq,
                        bool addInUseReq, bool isStandard, bool ignoreHeaderDeps);
-    void addHeaderUnit(const Node *headerNode, const string &logicalName, bool suppressError, bool addInReq,
+    void addHeaderUnit(const string &logicalName, const Node *headerUnit, bool suppressError, bool addInReq,
                        bool addInUseReq, bool isStandard, bool ignoreHeaderDeps);
     void addHeaderUnitOrFileDir(const Node *includeDir, const string &prefix, bool isHeaderFile, const string &regexStr,
                                 bool addInReq, bool addInUseReq, bool isStandard = false,
@@ -210,17 +210,17 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     template <typename... U>
     CppSourceTarget &interfaceFiles(const string &modFile, const string &exportName, U... moduleFileString);
     template <typename... U>
-    CppSourceTarget &publicHeaderFiles(const string &headerUnit, const string &logicalName, U... headerUnitsString);
+    CppSourceTarget &publicHeaderFiles(const string &logicalName, const string &headerFile, U... headerUnitsString);
     template <typename... U>
-    CppSourceTarget &privateHeaderFiles(const string &headerUnit, const string &logicalName, U... headerUnitsString);
+    CppSourceTarget &privateHeaderFiles(const string &logicalName, const string &headerFile, U... headerUnitsString);
     template <typename... U>
-    CppSourceTarget &interfaceHeaderFiles(const string &headerUnit, const string &logicalName, U... headerUnitsString);
+    CppSourceTarget &interfaceHeaderFiles(const string &logicalName, const string &headerFile, U... headerUnitsString);
     template <typename... U>
-    CppSourceTarget &publicHeaderUnits(const string &headerUnit, const string &logicalName, U... headerUnitsString);
+    CppSourceTarget &publicHeaderUnits(const string &logicalName, const string &headerUnit, U... headerUnitsString);
     template <typename... U>
-    CppSourceTarget &privateHeaderUnits(const string &headerUnit, const string &logicalName, U... headerUnitsString);
+    CppSourceTarget &privateHeaderUnits(const string &logicalName, const string &headerUnit, U... headerUnitsString);
     template <typename... U>
-    CppSourceTarget &interfaceHeaderUnits(const string &headerUnit, const string &logicalName, U... headerUnitsString);
+    CppSourceTarget &interfaceHeaderUnits(const string &logicalName, const string &headerUnit, U... headerUnitsString);
     void parseRegexSourceDirs(bool assignToSourceNodes, const string &sourceDirectory, string regexStr, bool recursive);
     template <typename... U> CppSourceTarget &sourceFiles(const string &srcFile, U... sourceFileString);
     template <typename... U> CppSourceTarget &sourceDirs(const string &sourceDirectory, U... dirs);
@@ -1058,14 +1058,15 @@ CppSourceTarget &CppSourceTarget::interfaceFiles(const string &modFile, const st
 }
 
 template <typename... U>
-CppSourceTarget &CppSourceTarget::publicHeaderFiles(const string &header, const string &logicalName, U... headersString)
+CppSourceTarget &CppSourceTarget::publicHeaderFiles(const string &logicalName, const string &headerFile,
+                                                    U... headersString)
 {
 
     if constexpr (bsMode == BSMode::CONFIGURE)
     {
         if (configuration->evaluate(TreatModuleAsSource::NO))
         {
-            addHeaderFile(Node::getNodeFromNonNormalizedString(header, true), logicalName, false, true, true, false,
+            addHeaderFile(logicalName, Node::getNodeFromNonNormalizedString(headerFile, true), false, true, true, false,
                           false);
         }
     }
@@ -1081,15 +1082,15 @@ CppSourceTarget &CppSourceTarget::publicHeaderFiles(const string &header, const 
 }
 
 template <typename... U>
-CppSourceTarget &CppSourceTarget::privateHeaderFiles(const string &header, const string &logicalName,
+CppSourceTarget &CppSourceTarget::privateHeaderFiles(const string &logicalName, const string &headerFile,
                                                      U... headersString)
 {
     if constexpr (bsMode == BSMode::CONFIGURE)
     {
         if (configuration->evaluate(TreatModuleAsSource::NO))
         {
-            addHeaderFile(Node::getNodeFromNonNormalizedString(header, true), logicalName, false, true, false, false,
-                          false);
+            addHeaderFile(logicalName, Node::getNodeFromNonNormalizedString(headerFile, true), false, true, false,
+                          false, false);
         }
     }
 
@@ -1104,15 +1105,15 @@ CppSourceTarget &CppSourceTarget::privateHeaderFiles(const string &header, const
 }
 
 template <typename... U>
-CppSourceTarget &CppSourceTarget::interfaceHeaderFiles(const string &header, const string &logicalName,
+CppSourceTarget &CppSourceTarget::interfaceHeaderFiles(const string &logicalName, const string &headerFile,
                                                        U... headersString)
 {
     if constexpr (bsMode == BSMode::CONFIGURE)
     {
         if (configuration->evaluate(TreatModuleAsSource::NO))
         {
-            addHeaderFile(Node::getNodeFromNonNormalizedString(header, true), logicalName, false, false, true, false,
-                          false);
+            addHeaderFile(logicalName, Node::getNodeFromNonNormalizedString(headerFile, true), false, false, true,
+                          false, false);
         }
     }
 
@@ -1127,13 +1128,14 @@ CppSourceTarget &CppSourceTarget::interfaceHeaderFiles(const string &header, con
 }
 
 template <typename... U>
-CppSourceTarget &CppSourceTarget::publicHeaderUnits(const string &header, const string &logicalName, U... headersString)
+CppSourceTarget &CppSourceTarget::publicHeaderUnits(const string &logicalName, const string &headerUnit,
+                                                    U... headersString)
 {
     if constexpr (bsMode == BSMode::CONFIGURE)
     {
         if (configuration->evaluate(TreatModuleAsSource::NO))
         {
-            addHeaderUnit(Node::getNodeFromNonNormalizedString(header, true), logicalName, false, true, true, false,
+            addHeaderUnit(logicalName, Node::getNodeFromNonNormalizedString(headerUnit, true), false, true, true, false,
                           false);
         }
     }
@@ -1149,15 +1151,15 @@ CppSourceTarget &CppSourceTarget::publicHeaderUnits(const string &header, const 
 }
 
 template <typename... U>
-CppSourceTarget &CppSourceTarget::privateHeaderUnits(const string &header, const string &logicalName,
+CppSourceTarget &CppSourceTarget::privateHeaderUnits(const string &logicalName, const string &headerUnit,
                                                      U... headersString)
 {
     if constexpr (bsMode == BSMode::CONFIGURE)
     {
         if (configuration->evaluate(TreatModuleAsSource::NO))
         {
-            addHeaderUnit(Node::getNodeFromNonNormalizedString(header, true), logicalName, false, true, false, false,
-                          false);
+            addHeaderUnit(logicalName, Node::getNodeFromNonNormalizedString(headerUnit, true), false, true, false,
+                          false, false);
         }
     }
 
@@ -1172,15 +1174,15 @@ CppSourceTarget &CppSourceTarget::privateHeaderUnits(const string &header, const
 }
 
 template <typename... U>
-CppSourceTarget &CppSourceTarget::interfaceHeaderUnits(const string &header, const string &logicalName,
+CppSourceTarget &CppSourceTarget::interfaceHeaderUnits(const string &logicalName, const string &headerUnit,
                                                        U... headersString)
 {
     if constexpr (bsMode == BSMode::CONFIGURE)
     {
         if (configuration->evaluate(TreatModuleAsSource::NO))
         {
-            addHeaderUnit(Node::getNodeFromNonNormalizedString(header, true), logicalName, false, false, true, false,
-                          false);
+            addHeaderUnit(logicalName, Node::getNodeFromNonNormalizedString(headerUnit, true), false, false, true,
+                          false, false);
         }
     }
 
