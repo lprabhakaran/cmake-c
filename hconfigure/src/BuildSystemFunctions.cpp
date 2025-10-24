@@ -12,6 +12,21 @@
 
 using std::filesystem::current_path, std::filesystem::directory_iterator, std::ifstream, std::ofstream;
 
+#ifdef _WIN32
+#include <io.h> // For _isatty on Windows
+#else
+#include <unistd.h> // For isatty on Unix-like systems
+#endif
+
+void setIsConsol()
+{
+#ifdef _WIN32
+    isConsole = _isatty(_fileno(stdout));
+#else
+    isConsole = isatty(fileno(stdout));
+#endif
+}
+
 string getFileNameJsonOrOut(const string &name)
 {
 #ifdef USE_JSON_FILE_COMPRESSION

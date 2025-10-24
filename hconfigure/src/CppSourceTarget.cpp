@@ -202,9 +202,9 @@ void CppSourceTarget::getObjectFiles(vector<const ObjectFile *> *objectFiles, LO
     }
 }
 
-void CppSourceTarget::updateBuildCache(void *ptr)
+void CppSourceTarget::updateBuildCache(void *ptr, string &outputStr, string &errorStr)
 {
-    static_cast<SourceNode *>(ptr)->updateBuildCache();
+    static_cast<SourceNode *>(ptr)->updateBuildCache(outputStr, errorStr);
 }
 
 void CppSourceTarget::populateTransitiveProperties()

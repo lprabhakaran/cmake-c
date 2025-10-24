@@ -31,6 +31,7 @@ struct CompareSourceNode
 class SourceNode : public ObjectFile
 {
   public:
+    string compilationOutput;
     CCOrHash compileCommandWithTool;
     flat_hash_set<Node *> headerFiles;
     CppSourceTarget *target;
@@ -45,14 +46,14 @@ class SourceNode : public ObjectFile
     string getObjectFileOutputFilePathPrint(const PathPrint &pathPrint) const override;
     string getPrintName() const override;
     void initializeBuildCache(uint32_t index);
-    void completeCompilation();
+    string getCompileCommand() const;
     void updateBTarget(Builder &builder, unsigned short round, bool &isComplete) override;
     bool ignoreHeaderFile(string_view child) const;
     void parseDepsFromMSVCTextOutput(string &output, bool isClang);
     void parseDepsFromGCCDepsOutput();
     void parseHeaderDeps(string &output);
     void setSourceNodeFileStatus();
-    virtual void updateBuildCache();
+    virtual void updateBuildCache(string &outputStr, string &errorStr);
 };
 
 void to_json(Json &j, const SourceNode &sourceNode);
@@ -131,7 +132,7 @@ struct SMFile : SourceNode // Scanned Module Rule
     // In case of header-units, this check the ifc file.
     string getObjectFileOutputFilePathPrint(const PathPrint &pathPrint) const override;
     BTargetType getBTargetType() const override;
-    void updateBuildCache() override;
+    void updateBuildCache(string &outputStr, string &errorStr) override;
     string getCompileCommand() const;
     void setFileStatusAndPopulateAllDependencies();
     string getFlag() const;

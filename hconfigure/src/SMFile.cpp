@@ -68,7 +68,7 @@ void SourceNode::initializeBuildCache(const uint32_t index)
     }
 }
 
-void SourceNode::completeCompilation()
+string SourceNode::getCompileCommand() const
 {
     const Compiler &compiler = target->configuration->compilerFeatures.compiler;
     string compileCommand = "\"" + compiler.bTPath.generic_string() + "\" " + target->compileCommand;
@@ -82,36 +82,7 @@ void SourceNode::completeCompilation()
         compileCommand += "-c -MMD \"" + node->filePath + "\" -o \"" + objectNode->filePath + "\"";
     }
 
-    RunCommand r;
-    r.startProcess(compileCommand, false);
-    auto [output, exitStatus] = r.endProcess(false);
-    realBTargets[0].exitStatus = exitStatus;
-    // Compile-Command is only updated on succeeding i.e. in case of failure it will be re-executed
-    // because cached compile-command would be different
-    if (realBTargets[0].exitStatus == EXIT_SUCCESS)
-    {
-        compileCommandWithTool.hash = target->compileCommandWithTool.getHash();
-        headerFiles.clear();
-        parseHeaderDeps(output);
-    }
-    else if (compiler.bTFamily == BTFamily::MSVC)
-    {
-        // MSVC print header-files even when compilation fails.
-        parseHeaderDeps(output);
-    }
-
-    string printCommand;
-    if (output.empty())
-    {
-        printCommand = FORMAT("Building CppSourceFile {} of target {}", node->filePath, target->name);
-    }
-    else
-    {
-        printCommand = compileCommand;
-    }
-
-    CacheWriteManager::addNewEntry(exitStatus, target, this, settings.pcSettings.compileCommandColor, printCommand,
-                                   output);
+    return compileCommand;
 }
 
 void SourceNode::updateBTarget(Builder &builder, const unsigned short round, bool &isComplete)
@@ -122,7 +93,14 @@ void SourceNode::updateBTarget(Builder &builder, const unsigned short round, boo
         if (RealBTarget &rb = realBTargets[0]; rb.updateStatus == UpdateStatus::NEEDS_UPDATE)
         {
             rb.assignFileStatusToDependents();
-            completeCompilation();
+
+            RunCommand r;
+            r.startProcess(getCompileCommand(), false);
+            auto [output, exitStatus] = r.endProcess(false);
+            realBTargets[0].exitStatus = exitStatus;
+            compilationOutput = std::move(output);
+
+            CacheWriteManager::addNewEntry(exitStatus, target, this);
         }
     }
 }
@@ -332,15 +310,53 @@ void SourceNode::setSourceNodeFileStatus()
     }
 }
 
-void SourceNode::updateBuildCache()
+void SourceNode::updateBuildCache(string &outputStr, string &errorStr)
 {
+    const Compiler &compiler = target->configuration->compilerFeatures.compiler;
     BuildCache::Cpp::SourceFile &buildCache = target->cppBuildCache.srcFiles[indexInBuildCache];
-    buildCache.compileCommandWithTool = compileCommandWithTool;
-    buildCache.headerFiles.clear();
-    for (Node *header : headerFiles)
+
+    // Compile-Command is only updated on succeeding i.e. in case of failure it will be re-executed
+    // because cached compile-command would be different
+    if (realBTargets[0].exitStatus == EXIT_SUCCESS)
     {
-        buildCache.headerFiles.emplace_back(header);
+        buildCache.compileCommandWithTool.hash = target->compileCommandWithTool.getHash();
+        parseHeaderDeps(compilationOutput);
+        buildCache.headerFiles.clear();
+        for (Node *header : headerFiles)
+        {
+            buildCache.headerFiles.emplace_back(header);
+        }
     }
+    else if (compiler.bTFamily == BTFamily::MSVC)
+    {
+        // MSVC print header-files even when compilation fails.
+        parseHeaderDeps(compilationOutput);
+    }
+
+    string printCommand;
+    if (compilationOutput.empty())
+    {
+        printCommand = FORMAT("Building CppSourceFile {} of target {}", node->filePath, target->name);
+    }
+    else
+    {
+        printCommand = getCompileCommand();
+    }
+
+    if (isConsole)
+    {
+        outputStr += getColorCode(ColorIndex::dark_green);
+    }
+
+    outputStr += printCommand;
+    outputStr += getThreadId();
+    if (isConsole)
+    {
+        outputStr += getColorCode(ColorIndex::reset);
+    }
+
+    outputStr.push_back('\n');
+    outputStr += compilationOutput;
 }
 
 void to_json(Json &j, const SourceNode &sourceNode)
@@ -662,34 +678,15 @@ bool SMFile::build(Builder &builder)
         {
             if (requestType == N2978::CTB::LAST_MESSAGE)
             {
-                const auto &lastMessage = reinterpret_cast<N2978::CTBLastMessage &>(buffer);
+                auto &lastMessage = reinterpret_cast<N2978::CTBLastMessage &>(buffer);
 
                 ipcManager->closeConnection();
                 auto [_, exitStatus] = run.endProcess(true);
                 rb.exitStatus = exitStatus;
                 assert(rb.exitStatus == lastMessage.errorOccurred && "error-status mismatch");
+                compilationOutput = std::move(lastMessage.errorOutput);
 
-                // Compile-Command is only updated on succeeding i.e. in case of failure it will be re-executed
-                // because cached compile-command would be different
-                if (rb.exitStatus == EXIT_SUCCESS)
-                {
-                    compileCommandWithTool.hash = target->compileCommandWithTool.getHash();
-                    logicalName = lastMessage.logicalName;
-                }
-
-                string printCommand;
-                if (lastMessage.errorOutput.empty())
-                {
-                    printCommand = FORMAT("Compiled CppModuleFile {} of target {}", node->filePath, target->name);
-                }
-                else
-                {
-                    printCommand = "\"" + target->configuration->compilerFeatures.compiler.bTPath.generic_string() +
-                                   "\" " + target->compileCommand + getCompileCommand();
-                }
-
-                CacheWriteManager::addNewEntry(exitStatus, target, this, settings.pcSettings.compileCommandColor,
-                                               printCommand, lastMessage.errorOutput);
+                CacheWriteManager::addNewEntry(exitStatus, target, this);
                 return false;
             }
 
@@ -935,51 +932,80 @@ BTargetType SMFile::getBTargetType() const
     return BTargetType::SMFILE;
 }
 
-void SMFile::updateBuildCache()
+void SMFile::updateBuildCache(string &outputStr, string &errorStr)
 {
-    smRulesCache = BuildCache::Cpp::ModuleFile::SmRules{};
-    smRulesCache.headerStatusChanged = false;
-    for (const SMFile *smFile : allSMFileDependencies)
+    if (realBTargets[0].exitStatus == EXIT_SUCCESS)
     {
-        if (smFile->type == SM_FILE_TYPE::HEADER_UNIT)
+        smRulesCache = BuildCache::Cpp::ModuleFile::SmRules{};
+        smRulesCache.headerStatusChanged = false;
+        for (const SMFile *smFile : allSMFileDependencies)
         {
-            BuildCache::Cpp::ModuleFile::SmRules::SingleHeaderUnitDep huDep;
-            huDep.node = const_cast<Node *>(smFile->node);
-            huDep.myIndex = smFile->indexInBuildCache;
-            huDep.targetIndex = smFile->target->cacheIndex;
-            smRulesCache.headerUnitArray.emplace_back(huDep);
+            if (smFile->type == SM_FILE_TYPE::HEADER_UNIT)
+            {
+                BuildCache::Cpp::ModuleFile::SmRules::SingleHeaderUnitDep huDep;
+                huDep.node = const_cast<Node *>(smFile->node);
+                huDep.myIndex = smFile->indexInBuildCache;
+                huDep.targetIndex = smFile->target->cacheIndex;
+                smRulesCache.headerUnitArray.emplace_back(huDep);
+            }
+            else
+            {
+                BuildCache::Cpp::ModuleFile::SmRules::SingleModuleDep modDep;
+                modDep.node = smFile->objectNode;
+                modDep.logicalName = smFile->logicalName;
+                smRulesCache.moduleArray.emplace_back(std::move(modDep));
+            }
+        }
+
+        BuildCache::Cpp::ModuleFile *modFile;
+        if (type == SM_FILE_TYPE::HEADER_UNIT)
+        {
+            modFile = &target->cppBuildCache.headerUnits[indexInBuildCache];
+        }
+        else if (type == SM_FILE_TYPE::PARTITION_EXPORT || type == SM_FILE_TYPE::PRIMARY_EXPORT)
+        {
+            modFile = &target->cppBuildCache.imodFiles[indexInBuildCache];
         }
         else
         {
-            BuildCache::Cpp::ModuleFile::SmRules::SingleModuleDep modDep;
-            modDep.node = smFile->objectNode;
-            modDep.logicalName = smFile->logicalName;
-            smRulesCache.moduleArray.emplace_back(std::move(modDep));
+            modFile = &target->cppBuildCache.modFiles[indexInBuildCache];
         }
+
+        auto &[srcFile, smRules] = *modFile;
+        srcFile.compileCommandWithTool.hash = target->compileCommandWithTool.getHash();
+        srcFile.headerFiles.clear();
+        for (Node *header : headerFiles)
+        {
+            srcFile.headerFiles.emplace_back(header);
+        }
+        smRules = std::move(smRulesCache);
     }
 
-    BuildCache::Cpp::ModuleFile *modFile;
-    if (type == SM_FILE_TYPE::HEADER_UNIT)
+    string printCommand;
+    if (compilationOutput.empty())
     {
-        modFile = &target->cppBuildCache.headerUnits[indexInBuildCache];
-    }
-    else if (type == SM_FILE_TYPE::PARTITION_EXPORT || type == SM_FILE_TYPE::PRIMARY_EXPORT)
-    {
-        modFile = &target->cppBuildCache.imodFiles[indexInBuildCache];
+        printCommand = FORMAT("Compiled CppModuleFile {} of target {}", node->filePath, target->name);
     }
     else
     {
-        modFile = &target->cppBuildCache.modFiles[indexInBuildCache];
+        printCommand = "\"" + target->configuration->compilerFeatures.compiler.bTPath.generic_string() + "\" " +
+                       target->compileCommand + getCompileCommand();
     }
 
-    auto &[srcFile, smRules] = *modFile;
-    srcFile.compileCommandWithTool.hash = compileCommandWithTool.hash;
-    srcFile.headerFiles.clear();
-    for (Node *header : headerFiles)
+    if (isConsole)
     {
-        srcFile.headerFiles.emplace_back(header);
+        outputStr += getColorCode(ColorIndex::dark_green);
     }
-    smRules = std::move(smRulesCache);
+
+    outputStr += printCommand;
+    outputStr += getThreadId();
+    if (isConsole)
+    {
+        outputStr += getColorCode(ColorIndex::reset);
+    }
+
+    outputStr.push_back('\n');
+    outputStr += compilationOutput;
 }
 
 string SMFile::getCompileCommand() const

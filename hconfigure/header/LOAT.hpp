@@ -25,8 +25,8 @@ class LOAT : public PLOAT
 
   public:
     BuildCache::Link linkBuildCache;
-    BuildCache::Link updatedBuildCache;
     string reqLinkerFlags;
+    string compilationOutput;
     string_view linkOrArchiveCommandWithoutTargets;
     string linkOrArchiveCommandWithTargets;
     // Link Command excluding libraries(pre-built or other) that is also stored in the cache.
@@ -52,7 +52,7 @@ class LOAT : public PLOAT
 
     void setFileStatus();
     void updateBTarget(Builder &builder, unsigned short round, bool &isComplete) override;
-    void updateBuildCache(void *ptr) override;
+    void updateBuildCache(void *ptr, string &outputStr, string &errorStr) override;
     void writeBuildCache(vector<char> &buffer) override;
     void writeCacheAtConfigureTime();
     void readCacheAtBuildTime();

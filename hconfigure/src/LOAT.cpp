@@ -254,30 +254,22 @@ void LOAT::updateBTarget(Builder &builder, const unsigned short round, bool &isC
             const string linkCommand = toolPath + linkOrArchiveCommandWithTargets;
             RunCommand r;
             r.startProcess(linkCommand, false);
-            const auto [output, exitStatus] = r.endProcess(false);
+            auto [output, exitStatus] = r.endProcess(false);
             realBTarget.exitStatus = exitStatus;
 
             if (realBTarget.exitStatus == EXIT_SUCCESS)
             {
-                updatedBuildCache.commandWithoutArgumentsWithTools.hash = commandWithoutTargetsWithTool.getHash();
-                updatedBuildCache.objectFiles.reserve(objectFiles.size());
-                updatedBuildCache.objectFiles.clear();
-                for (const ObjectFile *objectFile : objectFiles)
-                {
-                    updatedBuildCache.objectFiles.emplace_back(objectFile->objectNode);
-                }
+                compilationOutput = std::move(output);
             }
 
             // We have to pass the linkBuildCache since we can not update it in multithreaded mode.
             if (linkTargetType == TargetType::LIBRARY_STATIC)
             {
-                CacheWriteManager::addNewEntry(exitStatus, this, nullptr, settings.pcSettings.archiveCommandColor,
-                                               getLinkOrArchiveCommandPrint(), output);
+                CacheWriteManager::addNewEntry(exitStatus, this, nullptr);
             }
             else if (linkTargetType == TargetType::EXECUTABLE || linkTargetType == TargetType::LIBRARY_SHARED)
             {
-                CacheWriteManager::addNewEntry(exitStatus, this, nullptr, settings.pcSettings.linkCommandColor,
-                                               getLinkOrArchiveCommandPrint(), output);
+                CacheWriteManager::addNewEntry(exitStatus, this, nullptr);
             }
 
             if constexpr (os == OS::NT)
@@ -317,9 +309,44 @@ void LOAT::updateBTarget(Builder &builder, const unsigned short round, bool &isC
     }
 }
 
-void LOAT::updateBuildCache(void *ptr)
+void LOAT::updateBuildCache(void *ptr, string &outputStr, string &errorStr)
 {
-    linkBuildCache = std::move(updatedBuildCache);
+    if (realBTargets[0].exitStatus == EXIT_SUCCESS)
+    {
+        linkBuildCache.commandWithoutArgumentsWithTools.hash = commandWithoutTargetsWithTool.getHash();
+        linkBuildCache.objectFiles.reserve(objectFiles.size());
+        linkBuildCache.objectFiles.clear();
+        for (const ObjectFile *objectFile : objectFiles)
+        {
+            linkBuildCache.objectFiles.emplace_back(objectFile->objectNode);
+        }
+    }
+
+    if (linkTargetType == TargetType::LIBRARY_STATIC)
+    {
+        if (isConsole)
+        {
+            outputStr += getColorCode(ColorIndex::light_gray);
+        }
+    }
+    else if (linkTargetType == TargetType::EXECUTABLE || linkTargetType == TargetType::LIBRARY_SHARED)
+    {
+
+        if (isConsole)
+        {
+            outputStr += getColorCode(ColorIndex::brown);
+        }
+    }
+
+    outputStr += getLinkOrArchiveCommandPrint();
+    outputStr += getThreadId();
+    if (isConsole)
+    {
+        outputStr += getColorCode(ColorIndex::reset);
+    }
+
+    outputStr.push_back('\n');
+    outputStr += compilationOutput;
 }
 
 void LOAT::writeBuildCache(vector<char> &buffer)

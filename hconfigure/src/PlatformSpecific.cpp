@@ -201,6 +201,17 @@ vector<char> readBufferFromCompressedFile(const string &fileName)
 #endif
 }
 
+string getThreadId()
+{
+    thread_local const std::string cached_id = [] {
+        const auto myId = std::this_thread::get_id();
+        std::stringstream ss;
+        ss << myId;
+        return ss.str();
+    }();
+    return cached_id;
+}
+
 void readConfigCache()
 {
     const uint32_t bufferSize = configCacheGlobal.size();

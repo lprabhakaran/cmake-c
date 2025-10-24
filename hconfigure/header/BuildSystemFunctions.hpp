@@ -1,18 +1,12 @@
 #ifndef HMAKE_BUILDSYSTEMFUNCTIONS_HPP
 #define HMAKE_BUILDSYSTEMFUNCTIONS_HPP
-#ifdef USE_HEADER_UNITS
-import "HashValues.hpp";
-import "OS.hpp";
-import "phmap.h";
-import "nlohmann/json.hpp";
-#else
+
 #include "HashValues.hpp"
 #include "OS.hpp"
 #include "nlohmann/json.hpp"
 #include "parallel-hashmap/parallel_hashmap/phmap.h"
 #include <deque>
 #include <mutex>
-#endif
 
 using std::mutex, std::vector, std::deque, phmap::node_hash_set, phmap::flat_hash_set;
 
@@ -23,6 +17,7 @@ inline char slashc = '\\';
 #else
 inline char slashc = '/';
 #endif
+inline bool isConsole = true;
 
 using Json = nlohmann::json; // Unordered json
 

@@ -55,9 +55,9 @@ TargetCache::TargetCache(const string &name)
     fileTargetCaches[cacheIndex].targetCache = this;
 }
 
-void TargetCache::updateBuildCache(void *ptr)
+void TargetCache::updateBuildCache(void *ptr, string &outputStr, string &errorStr)
 {
-    // Should not be called if a target has not this overridden
+    // Should not have been called if a target has not this overridden
     HMAKE_HMAKE_INTERNAL_ERROR
 }
 
