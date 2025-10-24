@@ -74,7 +74,7 @@ void Configuration::initialize()
                     for (const string &str : toolsCache.linuxTools[cache.selectedCompilerArrayIndex].includeDirs)
                     {
                         Node *inclNode = Node::getNodeFromNonNormalizedPath(str, false);
-                        c->addHeaderUnitOrFileDir(inclNode, "", true, "", true, true, true, true);
+                        c->addHeaderUnitOrFileDir(inclNode, "", true, "", true, true);
                     }
                 }
             }

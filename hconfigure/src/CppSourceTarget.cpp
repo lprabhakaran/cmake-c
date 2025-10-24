@@ -92,27 +92,27 @@ void CppSourceTarget::readModuleMapFromDir(const string &dir)
 
         if (currentModeIndex == 0)
         {
-            addHeaderUnit(string(pendingLogicalName), node, false, true, true, false, false);
+            addHeaderUnit(string(pendingLogicalName), node, false, true, true);
         }
         else if (currentModeIndex == 1)
         {
-            addHeaderUnit(string(pendingLogicalName), node, false, true, false, false, false);
+            addHeaderUnit(string(pendingLogicalName), node, false, true, false);
         }
         else if (currentModeIndex == 2)
         {
-            addHeaderUnit(string(pendingLogicalName), node, false, false, true, false, false);
+            addHeaderUnit(string(pendingLogicalName), node, false, false, true);
         }
         else if (currentModeIndex == 3)
         {
-            addHeaderUnit(string(pendingLogicalName), node, false, true, true, false, false);
+            addHeaderFile(string(pendingLogicalName), node, false, true, true);
         }
         else if (currentModeIndex == 4)
         {
-            addHeaderUnit(string(pendingLogicalName), node, false, true, false, false, false);
+            addHeaderFile(string(pendingLogicalName), node, false, true, false);
         }
         else if (currentModeIndex == 5)
         {
-            addHeaderUnit(string(pendingLogicalName), node, false, false, true, false, false);
+            addHeaderFile(string(pendingLogicalName), node, false, false, true);
         }
         else if (currentModeIndex == 6)
         {
@@ -297,7 +297,7 @@ void CppSourceTarget::actuallyAddModuleFileConfigTime(Node *node, string exportN
             }
         }
         imodFileDeps.emplace_back(new SMFile(this, node));
-        imodFileDeps[imodFileDeps.size() - 1]->logicalName = exportName;
+        imodFileDeps[imodFileDeps.size() - 1]->logicalNames.emplace_back(exportName);
     }
 }
 
@@ -447,8 +447,7 @@ void CppSourceTarget::removeHeaderUnit(const Node *headerNode, const string &log
 }
 
 void CppSourceTarget::addHeaderFile(const string &logicalName, const Node *headerFile, const bool suppressError,
-                                    const bool addInReq, const bool addInUseReq, const bool isStandard,
-                                    const bool ignoreHeaderDeps)
+                                    const bool addInReq, const bool addInUseReq)
 {
     string *p = new string(logicalName);
     if (headerFile->filePath.contains("workaround.hpp"))
@@ -472,8 +471,7 @@ void CppSourceTarget::addHeaderFile(const string &logicalName, const Node *heade
 }
 
 void CppSourceTarget::addHeaderUnit(const string &logicalName, const Node *headerUnit, bool suppressError,
-                                    const bool addInReq, const bool addInUseReq, const bool isStandard,
-                                    const bool ignoreHeaderDeps)
+                                    const bool addInReq, const bool addInUseReq)
 {
     if (logicalName.empty())
     {
@@ -549,13 +547,10 @@ void CppSourceTarget::addHeaderUnit(const string &logicalName, const Node *heade
         emplaceInNodesType(useReqNodesType, headerUnit, FileType::HEADER_UNIT);
         hu->isUseReqDep = true;
     }
-
-    hu->isSystem = isStandard;
 }
 
-void CppSourceTarget::addHeaderUnitOrFileDir(const Node *includeDir, const string &prefix, bool isHeaderFile,
-                                             const string &regexStr, const bool addInReq, const bool addInUseReq,
-                                             const bool isStandard, const bool ignoreHeaderDeps)
+void CppSourceTarget::addHeaderUnitOrFileDir(const Node *includeDir, const string &prefix, const bool isHeaderFile,
+                                             const string &regexStr, const bool addInReq, const bool addInUseReq)
 {
     if (configuration->evaluate(TreatModuleAsSource::YES))
     {
@@ -593,11 +588,11 @@ void CppSourceTarget::addHeaderUnitOrFileDir(const Node *includeDir, const strin
 
             if (isHeaderFile)
             {
-                addHeaderFile(*logicalName, headerNode, false, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
+                addHeaderFile(*logicalName, headerNode, false, addInReq, addInUseReq);
             }
             else
             {
-                addHeaderUnit(*logicalName, headerNode, false, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
+                addHeaderUnit(*logicalName, headerNode, false, addInReq, addInUseReq);
             }
         }
     }
@@ -666,11 +661,11 @@ void CppSourceTarget::addHeaderUnitOrFileDirMSVC(const Node *includeDir, bool is
 
             if (isHeaderFile)
             {
-                addHeaderFile(*logicalName, headerNode, true, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
+                addHeaderFile(*logicalName, headerNode, true, addInReq, addInUseReq);
             }
             else
             {
-                addHeaderUnit(*logicalName, headerNode, true, addInReq, addInUseReq, isStandard, ignoreHeaderDeps);
+                addHeaderUnit(*logicalName, headerNode, true, addInReq, addInUseReq);
             }
         }
     }
@@ -1049,7 +1044,7 @@ void CppSourceTarget::writeCacheAtConfigTime()
         smFile->interfaceNode = Node::getNodeFromNormalizedString(
             myBuildDir->filePath + slashc + smFile->node->getFileName() + fileNumber + ".ifc", true, true);
         writeNode(*configBuffer, smFile->node);
-        writeStringView(*configBuffer, smFile->logicalName);
+        writeStringView(*configBuffer, smFile->logicalNames[0]);
         writeNode(*configBuffer, smFile->objectNode);
         writeNode(*configBuffer, smFile->interfaceNode);
     }
@@ -1075,7 +1070,6 @@ void CppSourceTarget::writeCacheAtConfigTime()
 
         writeBool(*configBuffer, hu->isReqDep);
         writeBool(*configBuffer, hu->isUseReqDep);
-        writeBool(*configBuffer, hu->isSystem);
 
         const uint32_t logicalNamesSize = hu->logicalNames.size();
         writeUint32(*configBuffer, logicalNamesSize);
@@ -1145,12 +1139,12 @@ void CppSourceTarget::readConfigCacheAtBuildTime()
     for (uint32_t i = 0; i < imodSize; ++i)
     {
         SMFile *smFile = imodFileDeps.emplace_back(new SMFile(this, readHalfNode(ptr, configRead)));
-        smFile->logicalName = readStringView(ptr, configRead);
+        smFile->logicalNames.emplace_back(readStringView(ptr, configRead));
         smFile->objectNode = readHalfNode(ptr, configRead);
         smFile->interfaceNode = readHalfNode(ptr, configRead);
         smFile->type =
-            smFile->logicalName.contains(':') ? SM_FILE_TYPE::PARTITION_EXPORT : SM_FILE_TYPE::PRIMARY_EXPORT;
-        imodNames.emplace(smFile->logicalName, smFile);
+            smFile->logicalNames[0].contains(':') ? SM_FILE_TYPE::PARTITION_EXPORT : SM_FILE_TYPE::PRIMARY_EXPORT;
+        imodNames.emplace(smFile->logicalNames[0], smFile);
 
         addDepNow<0>(*smFile);
         huAndIModTarget->addDepNow<0>(*smFile);
@@ -1168,7 +1162,6 @@ void CppSourceTarget::readConfigCacheAtBuildTime()
 
         hu->isReqDep = readBool(ptr, configRead);
         hu->isUseReqDep = readBool(ptr, configRead);
-        hu->isSystem = readBool(ptr, configRead);
 
         const uint32_t logicalNamesSize = readUint32(ptr, configRead);
         hu->logicalNames.reserve(logicalNamesSize);
@@ -1178,12 +1171,12 @@ void CppSourceTarget::readConfigCacheAtBuildTime()
             hu->logicalNames.emplace_back(str);
             if (hu->isReqDep)
             {
-                reqHeaderNameMapping.emplace(str, HeaderFileOrUnit(hu, hu->isSystem));
+                reqHeaderNameMapping.emplace(str, HeaderFileOrUnit(hu, isStandard));
             }
 
             if (hu->isUseReqDep)
             {
-                useReqHeaderNameMapping.emplace(str, HeaderFileOrUnit(hu, hu->isSystem));
+                useReqHeaderNameMapping.emplace(str, HeaderFileOrUnit(hu, isStandard));
             }
         }
 

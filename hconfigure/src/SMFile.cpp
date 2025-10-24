@@ -425,6 +425,7 @@ void SMFile::makeAndSendBTCModule(SMFile &mod)
 {
     N2978::BTCModule btcModule;
     btcModule.requested.filePath = mod.interfaceNode->filePath;
+    btcModule.isSystem = target->isStandard;
 
     N2978::ModuleDep dep;
     for (SMFile *smFile : mod.allSMFileDependencies)
@@ -433,10 +434,11 @@ void SMFile::makeAndSendBTCModule(SMFile &mod)
         {
             dep.isHeaderUnit = smFile->type == SM_FILE_TYPE::HEADER_UNIT;
             dep.file.filePath = smFile->interfaceNode->filePath;
-            if (!dep.isHeaderUnit)
+            for (const string &l : smFile->logicalNames)
             {
-                dep.logicalNames.emplace_back(smFile->logicalName);
+                dep.logicalNames.emplace_back(l);
             }
+            dep.isSystem = smFile->target->isStandard;
             btcModule.modDeps.emplace_back(std::move(dep));
 
             if (!target->ignoreHeaderDeps)
@@ -475,7 +477,7 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
 
     N2978::BTCNonModule btcNonModule;
     btcNonModule.isHeaderUnit = true;
-    btcNonModule.user = !hu.isSystem;
+    btcNonModule.isSystem = target->isStandard;
     btcNonModule.filePath = hu.interfaceNode->filePath;
     for (const string &str : hu.logicalNames)
     {
@@ -488,7 +490,7 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
         for (auto &[str, node] : composingHeaders)
         {
             // emplace in header-files to send
-            N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .user = true};
+            N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .isSystem = target->isStandard};
             btcNonModule.headerFiles.emplace_back(std::move(h));
 
             if (!target->ignoreHeaderDeps)
@@ -505,14 +507,12 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
             N2978::HuDep dep;
 
             dep.file.filePath = huDep->interfaceNode->filePath;
-            dep.user = !huDep->isSystem;
-
             for (const string &str : huDep->logicalNames)
             {
                 dep.logicalNames.emplace_back(str);
             }
-
             btcNonModule.huDeps.emplace_back(std::move(dep));
+            btcNonModule.isSystem = huDep->target->isStandard;
 
             if (!target->ignoreHeaderDeps)
             {
@@ -727,7 +727,7 @@ bool SMFile::build(Builder &builder)
 
                     response.filePath = f.data.node->filePath;
                     response.isHeaderUnit = false;
-                    response.user = !f.isSystem;
+                    response.isSystem = f.isSystem;
 
                     bool addedInComposingHeader = false;
                     if (!firstMessageSent)
@@ -747,7 +747,7 @@ bool SMFile::build(Builder &builder)
                             }
 
                             // emplace in header-files to send
-                            N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .user = true};
+                            N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .isSystem = target->isStandard};
                             response.headerFiles.emplace_back(std::move(h));
                         }
                     }
@@ -803,7 +803,7 @@ bool SMFile::build(Builder &builder)
             {
                 printErrorMessage(
                     FORMAT("Warning: already sent the module {}\n with logical-name{}\n requested in {}\n.",
-                           found->node->filePath, found->logicalName, node->filePath));
+                           found->node->filePath, found->logicalNames[0], node->filePath));
             }
 
             RealBTarget &foundRb = found->realBTargets[0];
@@ -909,7 +909,7 @@ string SMFile::getOutputFileName() const
     {
         // node->getFileName() is not used to prevent error in case header-file with same fileName exists in 2
         // different include directories. But is being included by different logicalName.
-        string str = logicalName;
+        string str = logicalNames[0];
         for (char &c : str)
         {
             if (c == '/')
@@ -952,7 +952,7 @@ void SMFile::updateBuildCache(string &outputStr, string &errorStr)
             {
                 BuildCache::Cpp::ModuleFile::SmRules::SingleModuleDep modDep;
                 modDep.node = smFile->objectNode;
-                modDep.logicalName = smFile->logicalName;
+                modDep.logicalName = smFile->logicalNames[0];
                 smRulesCache.moduleArray.emplace_back(std::move(modDep));
             }
         }
@@ -1016,7 +1016,7 @@ string SMFile::getCompileCommand() const
     {
         if (type == SM_FILE_TYPE::HEADER_UNIT)
         {
-            s += (isSystem ? "-fmodule-header=system /clang:-o\"" : "-fmodule-header=user /clang:-o\"") +
+            s += (target->isStandard ? "-fmodule-header=system /clang:-o\"" : "-fmodule-header=user /clang:-o\"") +
                  interfaceNode->filePath + "\" -noScanIPC -xc++-header \"" + node->filePath + '\"';
         }
         else if (type == SM_FILE_TYPE::PRIMARY_EXPORT || type == SM_FILE_TYPE::PARTITION_EXPORT)
@@ -1143,268 +1143,4 @@ void SMFile::setFileStatusAndPopulateAllDependencies()
     }
 
     rb.updateStatus = UpdateStatus::ALREADY_UPDATED;
-}
-
-string SMFile::getFlag() const
-{
-    string str;
-    if (target->configuration->compilerFeatures.evaluate(BTFamily::MSVC))
-    {
-        if (type == SM_FILE_TYPE::NOT_ASSIGNED)
-        {
-            printErrorMessage("Error! In getRequireFlag() type is NOT_ASSIGNED");
-        }
-        if (type == SM_FILE_TYPE::PRIMARY_EXPORT || type == SM_FILE_TYPE::PARTITION_EXPORT)
-        {
-            str = "/interface ";
-            str += "/ifcOutput" + addQuotes(target->myBuildDir->filePath + slashc + getOutputFileName() + ".ifc") + " ";
-        }
-        else if (type == SM_FILE_TYPE::HEADER_UNIT)
-        {
-            str = "/exportHeader ";
-            str += "/ifcOutput" + addQuotes(objectNode->filePath) + " ";
-        }
-        else if (type == SM_FILE_TYPE::PARTITION_IMPLEMENTATION)
-        {
-            str = "/internalPartition ";
-        }
-
-        if (type != SM_FILE_TYPE::HEADER_UNIT)
-        {
-            str += "/Fo" + addQuotes(objectNode->filePath);
-        }
-    }
-    else if (target->configuration->compilerFeatures.evaluate(BTFamily::GCC))
-    {
-        // Flags are for clang. I don't know GCC flags at the moment but clang is masqueraded as gcc in HMake so
-        // modifying this temporarily on Linux.
-
-        if (type == SM_FILE_TYPE::NOT_ASSIGNED)
-        {
-            printErrorMessage("Error! In getRequireFlag() type is NOT_ASSIGNED");
-        }
-        /*        else if (type == SM_FILE_TYPE::PRIMARY_EXPORT || type == SM_FILE_TYPE::PARTITION_EXPORT)
-                {
-                    str = "/interface ";
-                }
-                else if (type == SM_FILE_TYPE::HEADER_UNIT)
-                {
-                    str = "/exportHeader ";
-                }
-                else if (type == SM_FILE_TYPE::PARTITION_IMPLEMENTATION)
-                {
-                    str = "/internalPartition ";
-                }*/
-
-        if (type != SM_FILE_TYPE::PRIMARY_IMPLEMENTATION)
-        {
-            str +=
-                "-fmodule-output=" + addQuotes(target->myBuildDir->filePath + slashc + getOutputFileName() + ".ifc") +
-                " ";
-        }
-
-        if (type != SM_FILE_TYPE::HEADER_UNIT)
-        {
-            str += "-o " + addQuotes(objectNode->filePath);
-        }
-    }
-
-    return str;
-}
-
-string SMFile::getFlagPrint() const
-{
-    const CompileCommandPrintSettings &ccpSettings = settings.ccpSettings;
-    const bool infra = ccpSettings.infrastructureFlags;
-
-    string str;
-
-    if (target->configuration->compilerFeatures.evaluate(BTFamily::MSVC))
-    {
-        if (type == SM_FILE_TYPE::NOT_ASSIGNED)
-        {
-            printErrorMessage("Error! In getRequireFlag() type is NOT_ASSIGNED");
-        }
-
-        if (type == SM_FILE_TYPE::PRIMARY_EXPORT || type == SM_FILE_TYPE::PARTITION_EXPORT)
-        {
-            str = infra ? "/interface " : "";
-            str += infra ? "/ifcOutput" : "";
-
-            if (ccpSettings.ifcOutputFile.printLevel != PathPrintLevel::NO)
-            {
-                str += getReducedPath(target->myBuildDir->filePath + slashc + getOutputFileName() + ".ifc",
-                                      ccpSettings.ifcOutputFile) +
-                       " ";
-            }
-        }
-        else if (type == SM_FILE_TYPE::HEADER_UNIT)
-        {
-            str = infra ? "/exportHeader " : "";
-            str += infra ? "/ifcOutput" : "";
-
-            if (ccpSettings.ifcOutputFile.printLevel != PathPrintLevel::NO)
-            {
-                str += getReducedPath(objectNode->filePath, ccpSettings.ifcOutputFile) + " ";
-            }
-        }
-        else if (type == SM_FILE_TYPE::PARTITION_IMPLEMENTATION)
-        {
-            str = (infra ? "/internalPartition " : "") + str;
-        }
-
-        if (type != SM_FILE_TYPE::HEADER_UNIT)
-        {
-            str += infra ? "/Fo" : "";
-            if (ccpSettings.objectFile.printLevel != PathPrintLevel::NO)
-            {
-                str += getReducedPath(objectNode->filePath, ccpSettings.objectFile) + " ";
-            }
-        }
-    }
-    else if (target->configuration->compilerFeatures.evaluate(BTFamily::GCC))
-    {
-
-        if (type == SM_FILE_TYPE::NOT_ASSIGNED)
-        {
-            printErrorMessage("Error! In getRequireFlag() type is NOT_ASSIGNED");
-        }
-        /*        else if (type == SM_FILE_TYPE::PRIMARY_EXPORT || type == SM_FILE_TYPE::PARTITION_EXPORT)
-                {
-                    str = (infra ? "/interface " : "");
-                }
-                else if (type == SM_FILE_TYPE::HEADER_UNIT)
-                {
-                    str = (infra ? "/exportHeader " : "");
-                }
-                else if (type == SM_FILE_TYPE::PARTITION_IMPLEMENTATION)
-                {
-                    str = (infra ? "/internalPartition " : "") + str;
-                }*/
-
-        /*if (type != SM_FILE_TYPE::PRIMARY_IMPLEMENTATION)
-        {
-            str += infra ? "-fmodule-output=" : "";
-
-            if (ccpSettings.ifcOutputFile.printLevel != PathPrintLevel::NO)
-            {
-                str += getReducedPath(outputFilesWithoutExtension + ".ifc", ccpSettings.ifcOutputFile) + " ";
-            }
-        }
-
-        str += infra ? "-o" : "";
-        if (ccpSettings.objectFile.printLevel != PathPrintLevel::NO)
-        {
-            str += getReducedPath(outputFilesWithoutExtension + ".m.o", ccpSettings.objectFile) + " ";
-        }*/
-    }
-
-    return str;
-}
-
-string SMFile::getRequireFlag(const SMFile &dependentSMFile) const
-{
-
-    string str;
-
-    if (type == SM_FILE_TYPE::NOT_ASSIGNED)
-    {
-        printErrorMessage("HMake Error! In getRequireFlag() unknown type");
-    }
-    if (type == SM_FILE_TYPE::PRIMARY_EXPORT || type == SM_FILE_TYPE::PARTITION_EXPORT ||
-        type == SM_FILE_TYPE::PARTITION_IMPLEMENTATION)
-    {
-        const string ifcFilePath = addQuotes(target->myBuildDir->filePath + slashc + getOutputFileName() + ".ifc");
-        str = "/reference " + logicalName + "=" + ifcFilePath + " ";
-    }
-    else if (type == SM_FILE_TYPE::HEADER_UNIT)
-    {
-        // assert(dependentSMFile.headerUnitsConsumptionData.contains(const_cast<SMFile *>(this)) &&
-        //        "SMFile referencing a headerUnit for which there is no consumption method");
-
-        //  const string angleStr = dependentSMFile.headerUnitsConsumptionData.find(this)->second ? "angle" : "quote";
-        str += "/headerUnit:";
-        // str += angleStr + " ";
-        str += logicalName + "=" + addQuotes(objectNode->filePath) + " ";
-    }
-    else
-    {
-        printErrorMessage("HMake Error! In getRequireFlag() unknown type");
-    }
-    return str;
-}
-
-string SMFile::getRequireFlagPrint(const SMFile &dependentSMFile) const
-{
-    const string ifcFilePath = target->myBuildDir->filePath + slashc + getOutputFileName() + ".ifc";
-    const CompileCommandPrintSettings &ccpSettings = settings.ccpSettings;
-    auto getRequireIFCPathOrLogicalName = [&](const string &logicalName_) {
-        return ccpSettings.onlyLogicalNameOfRequireIFC
-                   ? logicalName_
-                   : logicalName_ + "=" + getReducedPath(ifcFilePath, ccpSettings.requireIFCs);
-    };
-
-    string str;
-    if (type == SM_FILE_TYPE::NOT_ASSIGNED)
-    {
-        printErrorMessage("HMake Error! In getRequireFlag() type is NOT_ASSIGNED");
-    }
-    if (type == SM_FILE_TYPE::PRIMARY_EXPORT || type == SM_FILE_TYPE::PARTITION_EXPORT ||
-        type == SM_FILE_TYPE::PARTITION_IMPLEMENTATION)
-    {
-        if (ccpSettings.requireIFCs.printLevel == PathPrintLevel::NO)
-        {
-            str = "";
-        }
-        else
-        {
-            if (ccpSettings.infrastructureFlags)
-            {
-                str += "/reference ";
-            }
-            str += getRequireIFCPathOrLogicalName(logicalName) + " ";
-        }
-    }
-    else if (type == SM_FILE_TYPE::HEADER_UNIT)
-    {
-        // assert(dependentSMFile.headerUnitsConsumptionData.contains(const_cast<SMFile *>(this)) &&
-        //        "SMFile referencing a headerUnit for which there is no consumption method");
-        if (ccpSettings.requireIFCs.printLevel == PathPrintLevel::NO)
-        {
-            str = "";
-        }
-        else
-        {
-            if (ccpSettings.infrastructureFlags)
-            {
-                // const string angleStr =
-                //     dependentSMFile.headerUnitsConsumptionData.find(this)->second ? "angle" : "quote";
-                // str += "/headerUnit:" + angleStr + " ";
-            }
-            str += getRequireIFCPathOrLogicalName(logicalName) + " ";
-        }
-    }
-
-    return str;
-}
-
-string SMFile::getModuleCompileCommandPrintLastHalf() const
-{
-    const CompileCommandPrintSettings ccpSettings = settings.ccpSettings;
-    string moduleCompileCommandPrintLastHalf;
-    if (ccpSettings.requireIFCs.printLevel != PathPrintLevel::NO)
-    {
-        for (const SMFile *smFile : allSMFileDependencies)
-        {
-            moduleCompileCommandPrintLastHalf += smFile->getRequireFlagPrint(*this);
-        }
-    }
-
-    moduleCompileCommandPrintLastHalf +=
-        ccpSettings.infrastructureFlags
-            ? target->getInfrastructureFlags(target->configuration->compilerFeatures.compiler)
-            : "";
-    moduleCompileCommandPrintLastHalf += getReducedPath(node->filePath, ccpSettings.sourceFile) + " ";
-    moduleCompileCommandPrintLastHalf += getFlagPrint();
-    return moduleCompileCommandPrintLastHalf;
 }

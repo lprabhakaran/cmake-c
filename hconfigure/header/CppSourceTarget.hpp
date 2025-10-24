@@ -124,12 +124,11 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     void removeHeaderFile(const string &logicalName, bool addInReq, bool addInUseReq);
     void removeHeaderUnit(const Node *headerNode, const string &logicalName, bool addInReq, bool addInUseReq);
     void addHeaderFile(const string &logicalName, const Node *headerFile, bool suppressError, bool addInReq,
-                       bool addInUseReq, bool isStandard, bool ignoreHeaderDeps);
+                       bool addInUseReq);
     void addHeaderUnit(const string &logicalName, const Node *headerUnit, bool suppressError, bool addInReq,
-                       bool addInUseReq, bool isStandard, bool ignoreHeaderDeps);
+                       bool addInUseReq);
     void addHeaderUnitOrFileDir(const Node *includeDir, const string &prefix, bool isHeaderFile, const string &regexStr,
-                                bool addInReq, bool addInUseReq, bool isStandard = false,
-                                bool ignoreHeaderDeps = false);
+                                bool addInReq, bool addInUseReq);
     void addHeaderUnitOrFileDirMSVC(const Node *includeDir, bool isHeaderFile, bool useMentioned, bool addInReq,
                                     bool addInUseReq, bool isStandard, bool ignoreHeaderDeps);
     uint64_t actuallyAddBigHuConfigTime(const Node *node, const string &headerUnit);
@@ -1072,8 +1071,7 @@ CppSourceTarget &CppSourceTarget::publicHeaderFiles(const string &logicalName, c
     {
         if (configuration->evaluate(TreatModuleAsSource::NO))
         {
-            addHeaderFile(logicalName, Node::getNodeFromNonNormalizedString(headerFile, true), false, true, true, false,
-                          false);
+            addHeaderFile(logicalName, Node::getNodeFromNonNormalizedString(headerFile, true), false, true, true);
         }
     }
 
@@ -1095,8 +1093,7 @@ CppSourceTarget &CppSourceTarget::privateHeaderFiles(const string &logicalName, 
     {
         if (configuration->evaluate(TreatModuleAsSource::NO))
         {
-            addHeaderFile(logicalName, Node::getNodeFromNonNormalizedString(headerFile, true), false, true, false,
-                          false, false);
+            addHeaderFile(logicalName, Node::getNodeFromNonNormalizedString(headerFile, true), false, true, false);
         }
     }
 
@@ -1118,8 +1115,7 @@ CppSourceTarget &CppSourceTarget::interfaceHeaderFiles(const string &logicalName
     {
         if (configuration->evaluate(TreatModuleAsSource::NO))
         {
-            addHeaderFile(logicalName, Node::getNodeFromNonNormalizedString(headerFile, true), false, false, true,
-                          false, false);
+            addHeaderFile(logicalName, Node::getNodeFromNonNormalizedString(headerFile, true), false, false, true);
         }
     }
 
@@ -1141,8 +1137,7 @@ CppSourceTarget &CppSourceTarget::publicHeaderUnits(const string &logicalName, c
     {
         if (configuration->evaluate(TreatModuleAsSource::NO))
         {
-            addHeaderUnit(logicalName, Node::getNodeFromNonNormalizedString(headerUnit, true), false, true, true, false,
-                          false);
+            addHeaderUnit(logicalName, Node::getNodeFromNonNormalizedString(headerUnit, true), false, true, true);
         }
     }
 
@@ -1164,8 +1159,7 @@ CppSourceTarget &CppSourceTarget::privateHeaderUnits(const string &logicalName, 
     {
         if (configuration->evaluate(TreatModuleAsSource::NO))
         {
-            addHeaderUnit(logicalName, Node::getNodeFromNonNormalizedString(headerUnit, true), false, true, false,
-                          false, false);
+            addHeaderUnit(logicalName, Node::getNodeFromNonNormalizedString(headerUnit, true), false, true, false);
         }
     }
 
@@ -1187,8 +1181,7 @@ CppSourceTarget &CppSourceTarget::interfaceHeaderUnits(const string &logicalName
     {
         if (configuration->evaluate(TreatModuleAsSource::NO))
         {
-            addHeaderUnit(logicalName, Node::getNodeFromNonNormalizedString(headerUnit, true), false, false, true,
-                          false, false);
+            addHeaderUnit(logicalName, Node::getNodeFromNonNormalizedString(headerUnit, true), false, false, true);
         }
     }
 

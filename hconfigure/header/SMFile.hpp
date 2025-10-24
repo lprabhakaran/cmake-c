@@ -81,7 +81,6 @@ enum class SM_FILE_TYPE : uint8_t
 struct SMFile : SourceNode // Scanned Module Rule
 {
     BuildCache::Cpp::ModuleFile::SmRules smRulesCache;
-    string logicalName;
 
     // Those header-files which are #included in this module or hu. These are initialized from config-cache as big-hu
     // have these. While Source::headerFiles have all the header-files of ours and our dependencies for accurate
@@ -107,7 +106,6 @@ struct SMFile : SourceNode // Scanned Module Rule
     // following 2 only used at configure time.
     bool isReqDep = false;
     bool isUseReqDep = false;
-    bool isSystem = false;
     bool compileCommandChanged = false;
     bool firstMessageSent = false;
 
@@ -135,10 +133,6 @@ struct SMFile : SourceNode // Scanned Module Rule
     void updateBuildCache(string &outputStr, string &errorStr) override;
     string getCompileCommand() const;
     void setFileStatusAndPopulateAllDependencies();
-    string getFlag() const;
-    string getFlagPrint() const;
-    string getRequireFlag(const SMFile &dependentSMFile) const;
-    string getRequireFlagPrint(const SMFile &logicalName_) const;
     string getModuleCompileCommandPrintLastHalf() const;
 };
 
