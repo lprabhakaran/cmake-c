@@ -1,15 +1,10 @@
 #ifndef HMAKE_CONFIGURATION_HPP
 #define HMAKE_CONFIGURATION_HPP
-#include "TargetCache.hpp"
-#ifdef USE_HEADER_UNITS
-import "BTarget.hpp";
-import "Features.hpp";
-import <memory>;
-#else
+
 #include "BTarget.hpp"
 #include "Features.hpp"
+#include "TargetCache.hpp"
 #include <memory>
-#endif
 
 using std::shared_ptr;
 
@@ -93,6 +88,18 @@ enum class BigHeaderUnit : bool
     YES,
 };
 
+enum class SystemTarget : bool
+{
+    NO,
+    YES,
+};
+
+enum class IgnoreHeaderDeps : bool
+{
+    NO,
+    YES,
+};
+
 class CSourceTarget;
 class PLOAT;
 class LOAT;
@@ -120,6 +127,8 @@ class Configuration : public BTarget
     TreatModuleAsSource treatModuleASSource = TreatModuleAsSource::YES;
     StdAsHeaderUnit stdAsHeaderUnit = StdAsHeaderUnit::YES;
     BigHeaderUnit bigHeaderUnit = BigHeaderUnit::NO;
+    SystemTarget systemTarget = SystemTarget::NO;
+    IgnoreHeaderDeps ignoreHeaderDeps = IgnoreHeaderDeps::NO;
 
     bool archiving = false;
 
@@ -269,6 +278,14 @@ template <typename T> bool Configuration::evaluate(T property) const
     else if constexpr (std::is_same_v<decltype(property), BigHeaderUnit>)
     {
         return bigHeaderUnit == property;
+    }
+    else if constexpr (std::is_same_v<decltype(property), SystemTarget>)
+    {
+        return systemTarget == property;
+    }
+    else if constexpr (std::is_same_v<decltype(property), IgnoreHeaderDeps>)
+    {
+        return ignoreHeaderDeps == property;
     }
     // CppCompilerFeatures
     else if constexpr (std::is_same_v<decltype(property), CxxSTD>)

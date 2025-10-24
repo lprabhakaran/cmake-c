@@ -425,7 +425,7 @@ void SMFile::makeAndSendBTCModule(SMFile &mod)
 {
     N2978::BTCModule btcModule;
     btcModule.requested.filePath = mod.interfaceNode->filePath;
-    btcModule.isSystem = target->isStandard;
+    btcModule.isSystem = target->isSystem;
 
     N2978::ModuleDep dep;
     for (SMFile *smFile : mod.allSMFileDependencies)
@@ -438,7 +438,7 @@ void SMFile::makeAndSendBTCModule(SMFile &mod)
             {
                 dep.logicalNames.emplace_back(l);
             }
-            dep.isSystem = smFile->target->isStandard;
+            dep.isSystem = smFile->target->isSystem;
             btcModule.modDeps.emplace_back(std::move(dep));
 
             if (!target->ignoreHeaderDeps)
@@ -477,7 +477,7 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
 
     N2978::BTCNonModule btcNonModule;
     btcNonModule.isHeaderUnit = true;
-    btcNonModule.isSystem = target->isStandard;
+    btcNonModule.isSystem = target->isSystem;
     btcNonModule.filePath = hu.interfaceNode->filePath;
     for (const string &str : hu.logicalNames)
     {
@@ -490,7 +490,7 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
         for (auto &[str, node] : composingHeaders)
         {
             // emplace in header-files to send
-            N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .isSystem = target->isStandard};
+            N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .isSystem = target->isSystem};
             btcNonModule.headerFiles.emplace_back(std::move(h));
 
             if (!target->ignoreHeaderDeps)
@@ -512,7 +512,7 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
                 dep.logicalNames.emplace_back(str);
             }
             btcNonModule.huDeps.emplace_back(std::move(dep));
-            btcNonModule.isSystem = huDep->target->isStandard;
+            btcNonModule.isSystem = huDep->target->isSystem;
 
             if (!target->ignoreHeaderDeps)
             {
@@ -747,7 +747,8 @@ bool SMFile::build(Builder &builder)
                             }
 
                             // emplace in header-files to send
-                            N2978::HeaderFile h{.logicalName = str, .filePath = node->filePath, .isSystem = target->isStandard};
+                            N2978::HeaderFile h{
+                                .logicalName = str, .filePath = node->filePath, .isSystem = target->isSystem};
                             response.headerFiles.emplace_back(std::move(h));
                         }
                     }
@@ -1016,7 +1017,7 @@ string SMFile::getCompileCommand() const
     {
         if (type == SM_FILE_TYPE::HEADER_UNIT)
         {
-            s += (target->isStandard ? "-fmodule-header=system /clang:-o\"" : "-fmodule-header=user /clang:-o\"") +
+            s += (target->isSystem ? "-fmodule-header=system /clang:-o\"" : "-fmodule-header=user /clang:-o\"") +
                  interfaceNode->filePath + "\" -noScanIPC -xc++-header \"" + node->filePath + '\"';
         }
         else if (type == SM_FILE_TYPE::PRIMARY_EXPORT || type == SM_FILE_TYPE::PARTITION_EXPORT)

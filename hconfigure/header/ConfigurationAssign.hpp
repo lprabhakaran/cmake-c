@@ -106,6 +106,14 @@ template <typename T, typename... Property> Configuration &Configuration::assign
     {
         bigHeaderUnit = property;
     }
+    else if constexpr (std::is_same_v<decltype(property), SystemTarget>)
+    {
+        systemTarget = property;
+    }
+    else if constexpr (std::is_same_v<decltype(property), IgnoreHeaderDeps>)
+    {
+        ignoreHeaderDeps = property;
+    }
     // CommonFeatures
     else if constexpr (std::is_same_v<decltype(property), TargetOS>)
     {

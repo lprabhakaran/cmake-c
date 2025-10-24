@@ -162,6 +162,9 @@ CppSourceTarget::CppSourceTarget(string buildCacheFilesDirPath_, const bool buil
 
 void CppSourceTarget::initializeCppSourceTarget(const string &name_, string buildCacheFilesDirPath)
 {
+    isSystem = configuration->evaluate(SystemTarget::YES);
+    ignoreHeaderDeps = configuration->evaluate(IgnoreHeaderDeps::YES);
+
     if constexpr (bsMode == BSMode::CONFIGURE)
     {
         if (buildCacheFilesDirPath.empty())
@@ -457,15 +460,15 @@ void CppSourceTarget::addHeaderFile(const string &logicalName, const Node *heade
     lowerCaseOnWindows(p->data(), p->size());
     if (addInReq)
     {
-        emplaceInHeaderNameMapping(reqHeaderNameMapping, *p,
-                                   HeaderFileOrUnit{const_cast<Node *>(headerFile), isStandard}, suppressError);
+        emplaceInHeaderNameMapping(reqHeaderNameMapping, *p, HeaderFileOrUnit{const_cast<Node *>(headerFile), isSystem},
+                                   suppressError);
         emplaceInNodesType(reqNodesType, headerFile, FileType::HEADER_FILE);
     }
 
     if (addInUseReq)
     {
         emplaceInHeaderNameMapping(useReqHeaderNameMapping, *p,
-                                   HeaderFileOrUnit{const_cast<Node *>(headerFile), isStandard}, suppressError);
+                                   HeaderFileOrUnit{const_cast<Node *>(headerFile), isSystem}, suppressError);
         emplaceInNodesType(useReqNodesType, headerFile, FileType::HEADER_FILE);
     }
 }
@@ -693,7 +696,7 @@ uint64_t CppSourceTarget::actuallyAddBigHuConfigTime(const Node *node, const str
 }
 
 void CppSourceTarget::actuallyAddInclude(const bool errorOnEmplaceFail, const Node *include, const bool addInReq,
-                                         const bool addInUseReq, bool isStandard, bool ignoreHeaderDeps)
+                                         const bool addInUseReq)
 {
     if constexpr (bsMode == BSMode::CONFIGURE)
     {
@@ -716,7 +719,7 @@ void CppSourceTarget::actuallyAddInclude(const bool errorOnEmplaceFail, const No
 
             if (!found)
             {
-                reqIncls.emplace_back(const_cast<Node *>(include), isStandard, ignoreHeaderDeps);
+                reqIncls.emplace_back(const_cast<Node *>(include), isSystem, ignoreHeaderDeps);
             }
         }
 
@@ -735,7 +738,7 @@ void CppSourceTarget::actuallyAddInclude(const bool errorOnEmplaceFail, const No
                 }
             }
 
-            useReqIncls.emplace_back(const_cast<Node *>(include), isStandard, ignoreHeaderDeps);
+            useReqIncls.emplace_back(const_cast<Node *>(include), isSystem, ignoreHeaderDeps);
         }
     }
 }
@@ -1171,12 +1174,12 @@ void CppSourceTarget::readConfigCacheAtBuildTime()
             hu->logicalNames.emplace_back(str);
             if (hu->isReqDep)
             {
-                reqHeaderNameMapping.emplace(str, HeaderFileOrUnit(hu, isStandard));
+                reqHeaderNameMapping.emplace(str, HeaderFileOrUnit(hu, isSystem));
             }
 
             if (hu->isUseReqDep)
             {
-                useReqHeaderNameMapping.emplace(str, HeaderFileOrUnit(hu, isStandard));
+                useReqHeaderNameMapping.emplace(str, HeaderFileOrUnit(hu, isSystem));
             }
         }
 
@@ -1197,8 +1200,8 @@ void CppSourceTarget::readConfigCacheAtBuildTime()
 
     if (configuration->evaluate(TreatModuleAsSource::YES))
     {
-        readInclDirsAtBuildTime(ptr, configRead, reqIncls, isStandard, ignoreHeaderDeps);
-        readInclDirsAtBuildTime(ptr, configRead, useReqIncls, isStandard, ignoreHeaderDeps);
+        readInclDirsAtBuildTime(ptr, configRead, reqIncls, isSystem, ignoreHeaderDeps);
+        readInclDirsAtBuildTime(ptr, configRead, useReqIncls, isSystem, ignoreHeaderDeps);
     }
     else
     {
@@ -1619,12 +1622,12 @@ template <> DSC<CppSourceTarget> &DSC<CppSourceTarget>::saveAndReplace(CppSource
 
     for (auto &[inclNode, cppSourceTarget] : stored->reqHuDirs)
     {
-        actuallyAddInclude(ptr.reqHuDirs, &ptr, inclNode.node->filePath, inclNode.isStandard,
+        actuallyAddInclude(ptr.reqHuDirs, &ptr, inclNode.node->filePath, inclNode.isSystem,
                            inclNode.ignoreHeaderDeps);
     }
     for (auto &[inclNode, cppSourceTarget] : stored->useReqHuDirs)
     {
-        actuallyAddInclude(ptr.useReqHuDirs, &ptr, inclNode.node->filePath, inclNode.isStandard,
+        actuallyAddInclude(ptr.useReqHuDirs, &ptr, inclNode.node->filePath, inclNode.isSystem,
                            inclNode.ignoreHeaderDeps);
     }
     ptr.reqCompileDefinitions = stored->reqCompileDefinitions;

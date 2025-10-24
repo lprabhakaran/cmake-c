@@ -85,7 +85,7 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     SMFile *privateBigHu = nullptr;
     SMFile *interfaceBigHu = nullptr;
 
-    bool isStandard = false;
+    bool isSystem = false;
     bool ignoreHeaderDeps = false;
 
     void setCompileCommand();
@@ -132,8 +132,7 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     void addHeaderUnitOrFileDirMSVC(const Node *includeDir, bool isHeaderFile, bool useMentioned, bool addInReq,
                                     bool addInUseReq, bool isStandard, bool ignoreHeaderDeps);
     uint64_t actuallyAddBigHuConfigTime(const Node *node, const string &headerUnit);
-    void actuallyAddInclude(bool errorOnEmplaceFail, const Node *include, bool addInReq, bool addInUseReq,
-                            bool isStandard = false, bool ignoreHeaderDeps = false);
+    void actuallyAddInclude(bool errorOnEmplaceFail, const Node *include, bool addInReq, bool addInUseReq);
     void readModuleMapFromDir(const string &dir);
 
     template <typename... U> CppSourceTarget &publicDeps(CppSourceTarget *dep, const U... deps);
