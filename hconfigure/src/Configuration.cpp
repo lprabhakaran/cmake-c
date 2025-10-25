@@ -1,7 +1,7 @@
 
-#include "ConfigurationAssign.hpp"
 #include "BoostCppTarget.hpp"
 #include "BuildSystemFunctions.hpp"
+#include "ConfigurationAssign.hpp"
 #include "CppSourceTarget.hpp"
 #include "DSC.hpp"
 #include "LOAT.hpp"

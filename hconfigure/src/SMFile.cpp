@@ -100,7 +100,7 @@ void SourceNode::updateBTarget(Builder &builder, const unsigned short round, boo
             realBTargets[0].exitStatus = exitStatus;
             compilationOutput = std::move(output);
 
-            CacheWriteManager::addNewEntry(exitStatus, target, this);
+            CacheWriteManager::addNewEntry(target, this);
         }
     }
 }
@@ -347,7 +347,6 @@ void SourceNode::updateBuildCache(string &outputStr, string &errorStr)
     {
         outputStr += getColorCode(ColorIndex::dark_green);
     }
-
     outputStr += printCommand;
     outputStr += getThreadId();
     if (isConsole)
@@ -355,18 +354,7 @@ void SourceNode::updateBuildCache(string &outputStr, string &errorStr)
         outputStr += getColorCode(ColorIndex::reset);
     }
 
-    outputStr.push_back('\n');
     outputStr += compilationOutput;
-}
-
-void to_json(Json &j, const SourceNode &sourceNode)
-{
-    // j[JConsts::srcFile] = *(sourceNode.sourceJson);
-}
-
-void to_json(Json &j, const SourceNode *sourceNode)
-{
-    j = *sourceNode;
 }
 
 bool operator<(const SourceNode &lhs, const SourceNode &rhs)
@@ -686,7 +674,7 @@ bool SMFile::build(Builder &builder)
                 assert(rb.exitStatus == lastMessage.errorOccurred && "error-status mismatch");
                 compilationOutput = std::move(lastMessage.errorOutput);
 
-                CacheWriteManager::addNewEntry(exitStatus, target, this);
+                CacheWriteManager::addNewEntry(target, this);
                 return false;
             }
 
@@ -997,7 +985,6 @@ void SMFile::updateBuildCache(string &outputStr, string &errorStr)
     {
         outputStr += getColorCode(ColorIndex::dark_green);
     }
-
     outputStr += printCommand;
     outputStr += getThreadId();
     if (isConsole)
@@ -1005,7 +992,6 @@ void SMFile::updateBuildCache(string &outputStr, string &errorStr)
         outputStr += getColorCode(ColorIndex::reset);
     }
 
-    outputStr.push_back('\n');
     outputStr += compilationOutput;
 }
 
@@ -1023,7 +1009,7 @@ string SMFile::getCompileCommand() const
         else if (type == SM_FILE_TYPE::PRIMARY_EXPORT || type == SM_FILE_TYPE::PARTITION_EXPORT)
         {
             s += " -o \"" + objectNode->filePath + "\" -noScanIPC -c -xc++-module \"" + node->filePath +
-                 "\" -fmodule-output=\"" + target->myBuildDir->filePath + slashc + getOutputFileName() + ".ifc\"";
+                 "\" -fmodule-output=\"" + interfaceNode->filePath + '\"';
         }
         else
         {

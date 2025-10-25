@@ -15,14 +15,11 @@ UpdatedCache::UpdatedCache(TargetCache *target_, void *cache_) : target(target_)
 {
 }
 
-void CacheWriteManager::addNewEntry(const bool exitStatus, TargetCache *target, void *cache)
+void CacheWriteManager::addNewEntry(TargetCache *target, void *cache)
 {
     {
         std::lock_guard _(cacheWriteManager.vecMutex);
-        if (exitStatus == EXIT_SUCCESS)
-        {
-            cacheWriteManager.updatedCaches.emplace_back(target, cache);
-        }
+        cacheWriteManager.updatedCaches.emplace_back(target, cache);
     }
     cacheWriteManager.vecCond.notify_one();
 }
@@ -110,6 +107,8 @@ void CacheWriteManager::performThreadOperations(const bool doUnlockAndRelock)
         WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), outputStr.data(), (DWORD)outputStr.size(), &written, nullptr);
 #endif
 
+        outputStr.clear();
+        errorStr.clear();
         if (doUnlockAndRelock)
         {
             vecMutex.lock();

@@ -265,11 +265,11 @@ void LOAT::updateBTarget(Builder &builder, const unsigned short round, bool &isC
             // We have to pass the linkBuildCache since we can not update it in multithreaded mode.
             if (linkTargetType == TargetType::LIBRARY_STATIC)
             {
-                CacheWriteManager::addNewEntry(exitStatus, this, nullptr);
+                CacheWriteManager::addNewEntry(this, nullptr);
             }
             else if (linkTargetType == TargetType::EXECUTABLE || linkTargetType == TargetType::LIBRARY_SHARED)
             {
-                CacheWriteManager::addNewEntry(exitStatus, this, nullptr);
+                CacheWriteManager::addNewEntry(this, nullptr);
             }
 
             if constexpr (os == OS::NT)
@@ -345,7 +345,6 @@ void LOAT::updateBuildCache(void *ptr, string &outputStr, string &errorStr)
         outputStr += getColorCode(ColorIndex::reset);
     }
 
-    outputStr.push_back('\n');
     outputStr += compilationOutput;
 }
 

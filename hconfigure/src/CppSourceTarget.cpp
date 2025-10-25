@@ -304,25 +304,32 @@ void CppSourceTarget::actuallyAddModuleFileConfigTime(Node *node, string exportN
     }
 }
 
-void CppSourceTarget::emplaceInHeaderNameMapping(flat_hash_map<string_view, HeaderFileOrUnit> &headerNameMapping,
-                                                 string_view headerName, HeaderFileOrUnit type,
+void CppSourceTarget::emplaceInHeaderNameMapping(string_view headerName, HeaderFileOrUnit type, bool addInReq,
                                                  const bool suppressError)
 {
-    if (const auto &[it, ok] = headerNameMapping.emplace(headerName, type); !ok && !suppressError)
+    if (const auto &[it, ok] = (addInReq ? reqHeaderNameMapping : useReqHeaderNameMapping).emplace(headerName, type);
+        ok)
+    {
+        if (!type.isUnit)
+        {
+            ++(addInReq ? reqHeaderFilesSize : useReqHeaderFilesSize);
+        }
+    }
+    else if (!suppressError)
     {
         printErrorMessage(
             FORMAT("In CppSourceTarget {}\nheaderNameMapping already has headerName {}.\n", name, string(headerName)));
     }
 }
 
-void CppSourceTarget::emplaceInNodesType(flat_hash_map<const Node *, FileType> &nodesType, const Node *node,
-                                         FileType type)
+void CppSourceTarget::emplaceInNodesType(const Node *node, FileType type, bool addInReq)
 {
     if (node->filePath.contains("yvals_core.h"))
     {
         bool breakpoint = true;
     }
-    if (const auto &[it, ok] = nodesType.emplace(node, type); !ok && it->second != type)
+    if (const auto &[it, ok] = (addInReq ? reqNodesType : useReqNodesType).emplace(node, type);
+        !ok && it->second != type)
     {
         printErrorMessage(FORMAT("In CppSourceTarget {}\nnodesTypeMap already has Node {} but with different type\n",
                                  name, node->filePath));
@@ -345,6 +352,7 @@ void CppSourceTarget::removeHeaderFile(const string &logicalName, const bool add
         {
             headerNode = it->second.data.node;
             reqHeaderNameMapping.erase(it);
+            --reqHeaderFilesSize;
         }
 
         if (const auto &it = reqNodesType.find(headerNode); it == reqNodesType.end())
@@ -368,6 +376,7 @@ void CppSourceTarget::removeHeaderFile(const string &logicalName, const bool add
         {
             headerNode = it->second.data.node;
             useReqHeaderNameMapping.erase(it);
+            --useReqHeaderFilesSize;
         }
 
         if (const auto &it = useReqNodesType.find(headerNode); it == useReqNodesType.end())
@@ -460,16 +469,15 @@ void CppSourceTarget::addHeaderFile(const string &logicalName, const Node *heade
     lowerCaseOnWindows(p->data(), p->size());
     if (addInReq)
     {
-        emplaceInHeaderNameMapping(reqHeaderNameMapping, *p, HeaderFileOrUnit{const_cast<Node *>(headerFile), isSystem},
-                                   suppressError);
-        emplaceInNodesType(reqNodesType, headerFile, FileType::HEADER_FILE);
+        emplaceInHeaderNameMapping(*p, HeaderFileOrUnit{const_cast<Node *>(headerFile), isSystem}, true, suppressError);
+        emplaceInNodesType(headerFile, FileType::HEADER_FILE, true);
     }
 
     if (addInUseReq)
     {
-        emplaceInHeaderNameMapping(useReqHeaderNameMapping, *p,
-                                   HeaderFileOrUnit{const_cast<Node *>(headerFile), isSystem}, suppressError);
-        emplaceInNodesType(useReqNodesType, headerFile, FileType::HEADER_FILE);
+        emplaceInHeaderNameMapping(*p, HeaderFileOrUnit{const_cast<Node *>(headerFile), isSystem}, false,
+                                   suppressError);
+        emplaceInNodesType(headerFile, FileType::HEADER_FILE, false);
     }
 }
 
@@ -539,15 +547,15 @@ void CppSourceTarget::addHeaderUnit(const string &logicalName, const Node *heade
 
     if (addInReq)
     {
-        emplaceInHeaderNameMapping(reqHeaderNameMapping, *p, HeaderFileOrUnit{hu, false}, suppressError);
-        emplaceInNodesType(reqNodesType, headerUnit, FileType::HEADER_UNIT);
+        emplaceInHeaderNameMapping(*p, HeaderFileOrUnit{hu, false}, true, suppressError);
+        emplaceInNodesType(headerUnit, FileType::HEADER_UNIT, true);
         hu->isReqDep = true;
     }
 
     if (addInUseReq)
     {
-        emplaceInHeaderNameMapping(useReqHeaderNameMapping, *p, HeaderFileOrUnit{hu, false}, suppressError);
-        emplaceInNodesType(useReqNodesType, headerUnit, FileType::HEADER_UNIT);
+        emplaceInHeaderNameMapping(*p, HeaderFileOrUnit{hu, false}, false, suppressError);
+        emplaceInNodesType(headerUnit, FileType::HEADER_UNIT, false);
         hu->isUseReqDep = true;
     }
 }
@@ -765,7 +773,7 @@ void CppSourceTarget::updateBTarget(Builder &builder, const unsigned short round
             {
                 for (const auto &[n, t] : t->useReqNodesType)
                 {
-                    emplaceInNodesType(reqNodesType, n, t);
+                    emplaceInNodesType(n, t, true);
                 }
             }
 
@@ -912,13 +920,17 @@ void readInclDirsAtBuildTime(const char *ptr, uint32_t &bytesRead, vector<InclNo
     }
 }
 
-void writeHeaderFilesOrUnitsAtConfigTime(vector<char> &buffer,
-                                         flat_hash_map<string_view, HeaderFileOrUnit> &headerNameMapping)
+void writeHeaderFilesAtConfigTime(vector<char> &buffer, flat_hash_map<string_view, HeaderFileOrUnit> &headerNameMapping,
+                                  uint32_t headersSize)
 {
-    writeUint32(buffer, headerNameMapping.size());
+    writeUint32(buffer, headersSize);
     for (const auto &[s, h] : headerNameMapping)
     {
-        assert(!h.isUnit && "HeaderFileOrUnit can not be HeaderUnit at config-time\n");
+        if (h.isUnit)
+        {
+            continue;
+        }
+
         writeStringView(buffer, s);
         writeNode(buffer, h.data.node);
         writeBool(buffer, h.isSystem);
@@ -1098,8 +1110,8 @@ void CppSourceTarget::writeCacheAtConfigTime()
     }
     else
     {
-        writeHeaderFilesOrUnitsAtConfigTime(*configBuffer, reqHeaderNameMapping);
-        writeHeaderFilesOrUnitsAtConfigTime(*configBuffer, useReqHeaderNameMapping);
+        writeHeaderFilesAtConfigTime(*configBuffer, reqHeaderNameMapping, reqHeaderFilesSize);
+        writeHeaderFilesAtConfigTime(*configBuffer, useReqHeaderNameMapping, useReqHeaderFilesSize);
     }
 
     fileTargetCaches[cacheIndex].configCache = string_view{configBuffer->data(), configBuffer->size()};

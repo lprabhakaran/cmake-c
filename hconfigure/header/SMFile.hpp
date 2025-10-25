@@ -56,8 +56,6 @@ class SourceNode : public ObjectFile
     virtual void updateBuildCache(string &outputStr, string &errorStr);
 };
 
-void to_json(Json &j, const SourceNode &sourceNode);
-void to_json(Json &j, const SourceNode *sourceNode);
 bool operator<(const SourceNode &lhs, const SourceNode &rhs);
 
 enum class SM_REQUIRE_TYPE : uint8_t

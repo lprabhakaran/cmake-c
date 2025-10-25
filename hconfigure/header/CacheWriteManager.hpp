@@ -52,7 +52,7 @@ class CacheWriteManager
     uint64_t nodesSizeStart = 0;
     bool exitAfterThis = false;
 
-    static void addNewEntry(bool exitStatus, TargetCache *target, void *cache);
+    static void addNewEntry(TargetCache *target, void *cache);
     void writeNodesCacheIfNewNodesAdded();
     ~CacheWriteManager();
     void initialize();

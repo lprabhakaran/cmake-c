@@ -207,7 +207,7 @@ string getThreadId()
         const auto myId = std::this_thread::get_id();
         std::stringstream ss;
         ss << myId;
-        return ss.str();
+        return ss.str() + '\n';
     }();
     return cached_id;
 }

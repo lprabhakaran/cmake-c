@@ -85,6 +85,10 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     SMFile *privateBigHu = nullptr;
     SMFile *interfaceBigHu = nullptr;
 
+    // Used only at configure time
+    uint32_t reqHeaderFilesSize = 0;
+    uint32_t useReqHeaderFilesSize = 0;
+
     bool isSystem = false;
     bool ignoreHeaderDeps = false;
 
@@ -118,9 +122,8 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
 
     void actuallyAddSourceFileConfigTime(Node *node);
     void actuallyAddModuleFileConfigTime(Node *node, string exportName);
-    void emplaceInHeaderNameMapping(flat_hash_map<string_view, HeaderFileOrUnit> &headerNameMapping,
-                                    string_view headerName, HeaderFileOrUnit type, bool suppressError);
-    void emplaceInNodesType(flat_hash_map<const Node *, FileType> &nodesType, const Node *node, FileType type);
+    void emplaceInHeaderNameMapping(string_view headerName, HeaderFileOrUnit type, bool addInReq, bool suppressError);
+    void emplaceInNodesType(const Node *node, FileType type, bool addInReq);
     void removeHeaderFile(const string &logicalName, bool addInReq, bool addInUseReq);
     void removeHeaderUnit(const Node *headerNode, const string &logicalName, bool addInReq, bool addInUseReq);
     void addHeaderFile(const string &logicalName, const Node *headerFile, bool suppressError, bool addInReq,
