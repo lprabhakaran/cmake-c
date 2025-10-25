@@ -933,37 +933,21 @@ void writeHeaderFilesAtConfigTime(vector<char> &buffer, flat_hash_map<string_vie
 
         writeStringView(buffer, s);
         writeNode(buffer, h.data.node);
-        writeBool(buffer, h.isSystem);
     }
 }
 
 void readHeaderFilesAtBuildTime(const char *ptr, uint32_t &bytesRead,
-                                flat_hash_map<string_view, HeaderFileOrUnit> &headerNameMapping)
+                                flat_hash_map<string_view, HeaderFileOrUnit> &headerNameMapping, bool isSystem)
 {
     const uint32_t includeSize = readUint32(ptr, bytesRead);
     for (uint32_t i = 0; i < includeSize; ++i)
     {
         string_view name = readStringView(ptr, bytesRead);
         Node *node = readHalfNode(ptr, bytesRead);
-        const bool isStandard = readBool(ptr, bytesRead);
-        if (!headerNameMapping.emplace(name, HeaderFileOrUnit{node, isStandard}).second)
+        if (!headerNameMapping.emplace(name, HeaderFileOrUnit{node, isSystem}).second)
         {
-            bool brekapoint = true;
+            HMAKE_HMAKE_INTERNAL_ERROR
         }
-    }
-}
-
-void readHeaderUnitesAtBuildTime(const char *ptr, uint32_t &bytesRead,
-                                 flat_hash_map<string_view, HeaderFileOrUnit> &headerNameMapping,
-                                 vector<SMFile> &headerUnits)
-{
-    const uint32_t includeSize = readUint32(ptr, bytesRead);
-    for (uint32_t i = 0; i < includeSize; ++i)
-    {
-        string_view name = readStringView(ptr, bytesRead);
-        const uint32_t index = readUint32(ptr, bytesRead);
-        const bool isStandard = readBool(ptr, bytesRead);
-        headerNameMapping.emplace(name, HeaderFileOrUnit{&headerUnits[index], isStandard});
     }
 }
 
@@ -1217,8 +1201,8 @@ void CppSourceTarget::readConfigCacheAtBuildTime()
     }
     else
     {
-        readHeaderFilesAtBuildTime(ptr, configRead, reqHeaderNameMapping);
-        readHeaderFilesAtBuildTime(ptr, configRead, useReqHeaderNameMapping);
+        readHeaderFilesAtBuildTime(ptr, configRead, reqHeaderNameMapping, isSystem);
+        readHeaderFilesAtBuildTime(ptr, configRead, useReqHeaderNameMapping, isSystem);
     }
 
     if (configRead != configCache.size())

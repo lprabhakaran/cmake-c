@@ -413,25 +413,25 @@ void SMFile::makeAndSendBTCModule(SMFile &mod)
 {
     N2978::BTCModule btcModule;
     btcModule.requested.filePath = mod.interfaceNode->filePath;
-    btcModule.isSystem = target->isSystem;
+    btcModule.isSystem = mod.target->isSystem;
 
     N2978::ModuleDep dep;
-    for (SMFile *smFile : mod.allSMFileDependencies)
+    for (SMFile *modDep : mod.allSMFileDependencies)
     {
-        if (allSMFileDependencies.emplace(smFile).second)
+        if (allSMFileDependencies.emplace(modDep).second)
         {
-            dep.isHeaderUnit = smFile->type == SM_FILE_TYPE::HEADER_UNIT;
-            dep.file.filePath = smFile->interfaceNode->filePath;
-            for (const string &l : smFile->logicalNames)
+            dep.isHeaderUnit = modDep->type == SM_FILE_TYPE::HEADER_UNIT;
+            dep.file.filePath = modDep->interfaceNode->filePath;
+            for (const string &l : modDep->logicalNames)
             {
                 dep.logicalNames.emplace_back(l);
             }
-            dep.isSystem = smFile->target->isSystem;
+            dep.isSystem = modDep->target->isSystem;
             btcModule.modDeps.emplace_back(std::move(dep));
 
             if (!target->ignoreHeaderDeps)
             {
-                for (Node *headerFile : smFile->headerFiles)
+                for (Node *headerFile : modDep->headerFiles)
                 {
                     headerFiles.emplace(headerFile);
                 }
@@ -465,7 +465,7 @@ void SMFile::makeAndSendBTCNonModule(SMFile &hu)
 
     N2978::BTCNonModule btcNonModule;
     btcNonModule.isHeaderUnit = true;
-    btcNonModule.isSystem = target->isSystem;
+    btcNonModule.isSystem = hu.target->isSystem;
     btcNonModule.filePath = hu.interfaceNode->filePath;
     for (const string &str : hu.logicalNames)
     {
