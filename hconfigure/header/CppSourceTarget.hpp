@@ -47,7 +47,6 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
 
     // Compile Command excluding source-file or source-files(in case of module) that is also stored in the cache.
     string compileCommand;
-    string sourceCompileCommandPrintFirstHalf;
     string reqCompilerFlags;
     string useReqCompilerFlags;
 
@@ -93,13 +92,9 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     bool ignoreHeaderDeps = false;
 
     void setCompileCommand();
-    void setSourceCompileCommandPrintFirstHalf();
-    string &getSourceCompileCommandPrintFirstHalf();
 
     string getDependenciesString() const;
     static string getInfrastructureFlags(const Compiler &compiler);
-    string getCompileCommandPrintSecondPart(const SourceNode &sourceNode) const;
-    string getCompileCommandPrintSecondPartSMRule(const SMFile &smFile) const;
     void updateBTarget(Builder &builder, unsigned short round, bool &isComplete) override;
     void writeBuildCache(vector<char> &buffer) override;
     void setHeaderStatusChanged(BuildCache::Cpp::ModuleFile &modCache);
@@ -134,7 +129,6 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
                                 bool addInReq, bool addInUseReq);
     void addHeaderUnitOrFileDirMSVC(const Node *includeDir, bool isHeaderFile, bool useMentioned, bool addInReq,
                                     bool addInUseReq, bool isStandard, bool ignoreHeaderDeps);
-    uint64_t actuallyAddBigHuConfigTime(const Node *node, const string &headerUnit);
     void actuallyAddInclude(bool errorOnEmplaceFail, const Node *include, bool addInReq, bool addInUseReq);
     void readModuleMapFromDir(const string &dir);
 
@@ -197,12 +191,6 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     template <typename... U> CppSourceTarget &privateIncludesSource(const string &include, U... includeDirectoryString);
     template <typename... U>
     CppSourceTarget &interfaceIncludesSource(const string &include, U... includeDirectoryString);
-    template <typename... U>
-    CppSourceTarget &publicHUDirsBigHu(const string &include, const string &headerUnit, const string &logicalName,
-                                       U... includeDirectoryString);
-    template <typename... U>
-    CppSourceTarget &privateHUDirsBigHu(const string &include, const string &headerUnit, const string &logicalName,
-                                        U... includeDirectoryString);
     CppSourceTarget &publicCompilerFlags(const string &compilerFlags);
     CppSourceTarget &privateCompilerFlags(const string &compilerFlags);
     CppSourceTarget &interfaceCompilerFlags(const string &compilerFlags);
@@ -903,55 +891,6 @@ CppSourceTarget &CppSourceTarget::interfaceIncludesSource(const string &include,
     if constexpr (sizeof...(includeDirectoryString))
     {
         return interfaceIncludesSource(includeDirectoryString...);
-    }
-    else
-    {
-        return *this;
-    }
-}
-
-template <typename... U>
-CppSourceTarget &CppSourceTarget::publicHUDirsBigHu(const string &include, const string &headerUnit,
-                                                    const string &logicalName, U... includeDirectoryString)
-{
-    if constexpr (bsMode == BSMode::CONFIGURE)
-    {
-        if (configuration->evaluate(TreatModuleAsSource::NO))
-        {
-            uint64_t headerUnitsIndex =
-                actuallyAddBigHuConfigTime(Node::getNodeFromNonNormalizedString(headerUnit, true), logicalName);
-            // actuallyAddInclude(reqHuDirs, this, include, cacheIndex, headerUnitsIndex);
-            // actuallyAddInclude(useReqHuDirs, this, include, cacheIndex, headerUnitsIndex);
-        }
-    }
-
-    if constexpr (sizeof...(includeDirectoryString))
-    {
-        return publicHUDirsBigHu(includeDirectoryString...);
-    }
-    else
-    {
-        return *this;
-    }
-}
-
-template <typename... U>
-CppSourceTarget &CppSourceTarget::privateHUDirsBigHu(const string &include, const string &headerUnit,
-                                                     const string &logicalName, U... includeDirectoryString)
-{
-    if constexpr (bsMode == BSMode::CONFIGURE)
-    {
-        if (configuration->evaluate(TreatModuleAsSource::NO))
-        {
-            uint64_t headerUnitsIndex =
-                actuallyAddBigHuConfigTime(Node::getNodeFromNonNormalizedString(headerUnit, true), logicalName);
-            // actuallyAddInclude(reqHuDirs, this, include, cacheIndex, headerUnitsIndex);
-        }
-    }
-
-    if constexpr (sizeof...(includeDirectoryString))
-    {
-        return privateHUDirsBigHu(includeDirectoryString...);
     }
     else
     {

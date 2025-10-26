@@ -334,22 +334,22 @@ void SourceNode::updateBuildCache(string &outputStr, string &errorStr, bool &bui
         parseHeaderDeps(compilationOutput);
     }
 
-    string printCommand;
-    if (compilationOutput.empty())
-    {
-        printCommand = FORMAT("Building CppSourceFile {} of target {}", node->filePath, target->name);
-    }
-    else
-    {
-        printCommand = getCompileCommand();
-    }
-
     if (isConsole)
     {
         outputStr += getColorCode(ColorIndex::cyan);
     }
-    outputStr += printCommand;
+
+    if (compilationOutput.empty())
+    {
+        outputStr += FORMAT("C++Source {} {} ", node->filePath, target->name);
+    }
+    else
+    {
+        outputStr += getCompileCommand() + '\n';
+    }
+
     outputStr += getThreadId();
+
     if (isConsole)
     {
         outputStr += getColorCode(ColorIndex::reset);
@@ -972,23 +972,25 @@ void SMFile::updateBuildCache(string &outputStr, string &errorStr, bool &buildCa
         smRules = std::move(smRulesCache);
     }
 
-    string printCommand;
-    if (compilationOutput.empty())
-    {
-        printCommand = FORMAT("Compiled CppModuleFile {} of target {}", node->filePath, target->name);
-    }
-    else
-    {
-        printCommand = "\"" + target->configuration->compilerFeatures.compiler.bTPath.generic_string() + "\" " +
-                       target->compileCommand + getCompileCommand();
-    }
-
     if (isConsole)
     {
         outputStr += getColorCode(type == SM_FILE_TYPE::HEADER_UNIT ? ColorIndex::hot_pink : ColorIndex::magenta);
     }
-    outputStr += printCommand;
+
+    if (compilationOutput.empty())
+    {
+        outputStr += FORMAT("C++{} {} {}", type == SM_FILE_TYPE::HEADER_UNIT ? "Header-Unit" : "Module", node->filePath,
+                            target->name);
+    }
+    else
+    {
+        outputStr += "\"" + target->configuration->compilerFeatures.compiler.bTPath.generic_string() + "\" " +
+                     target->compileCommand + getCompileCommand();
+    }
+
+    outputStr += '\n';
     outputStr += getThreadId();
+
     if (isConsole)
     {
         outputStr += getColorCode(ColorIndex::reset);

@@ -682,27 +682,6 @@ void CppSourceTarget::addHeaderUnitOrFileDirMSVC(const Node *includeDir, bool is
     }
 }
 
-uint64_t CppSourceTarget::actuallyAddBigHuConfigTime(const Node *node, const string &headerUnit)
-{
-    HMAKE_HMAKE_INTERNAL_ERROR
-    return 33;
-    /*namespace CppConfig = Indices::ConfigCache::CppConfig;
-    // No check for uniques since this is checked in writeConfigCacheAtConfigTime
-    buildOrConfigCacheCopy[CppConfig::headerUnits].PushBack(node->getValue(), cacheAlloc);
-    Value &headerUnitJson = buildCacheBuffer[targetCacheIndex][Indices::BuildCache::CppBuild::headerUnits];
-    const uint64_t index = valueIndexInSubArray(headerUnitJson, node->getValue());
-    if (index == UINT64_MAX)
-    {
-        const uint64_t size = headerUnitJson.Size();
-        headerUnitJson.PushBack(kArrayType, cacheAlloc);
-        SMFile::initializeModuleJson(headerUnitJson[size], node, cacheAlloc, *this);
-        headerUnitJson[size][Indices::BuildCache::CppBuild::ModuleFiles::smRules].PushBack(
-            Value().SetString(svtogsr(headerUnit), cacheAlloc), cacheAlloc);
-        return size;
-    }
-    return index;*/
-}
-
 void CppSourceTarget::actuallyAddInclude(const bool errorOnEmplaceFail, const Node *include, const bool addInReq,
                                          const bool addInUseReq)
 {
@@ -831,7 +810,6 @@ void CppSourceTarget::updateBTarget(Builder &builder, const unsigned short round
             }
         }
 
-        setSourceCompileCommandPrintFirstHalf();
         for (const CppSourceTarget *cppSourceTarget : reqDeps)
         {
             if (!cppSourceTarget->modFileDeps.empty())
@@ -1373,91 +1351,6 @@ void CppSourceTarget::setCompileCommand()
     }
 }
 
-void CppSourceTarget::setSourceCompileCommandPrintFirstHalf()
-{
-    const CompileCommandPrintSettings &ccpSettings = settings.ccpSettings;
-    const Compiler &compiler = configuration->compilerFeatures.compiler;
-
-    const path p;
-    if (ccpSettings.tool.printLevel != PathPrintLevel::NO)
-    {
-        sourceCompileCommandPrintFirstHalf +=
-            getReducedPath(compiler.bTPath.lexically_normal().string(), ccpSettings.tool) + " ";
-    }
-
-    if (ccpSettings.infrastructureFlags)
-    {
-        const CompilerFlags &flags = configuration->compilerFlags;
-        if (compiler.bTFamily == BTFamily::GCC)
-        {
-            sourceCompileCommandPrintFirstHalf += flags.LANG + flags.OPTIONS + flags.OPTIONS_COMPILE +
-                                                  flags.OPTIONS_COMPILE_CPP + flags.DEFINES_COMPILE_CPP;
-        }
-        else if (compiler.bTFamily == BTFamily::MSVC)
-        {
-            sourceCompileCommandPrintFirstHalf += flags.CPP_FLAGS_COMPILE_CPP + flags.CPP_FLAGS_COMPILE +
-                                                  flags.OPTIONS_COMPILE + flags.OPTIONS_COMPILE_CPP;
-        }
-    }
-
-    if (ccpSettings.compilerFlags)
-    {
-        sourceCompileCommandPrintFirstHalf += reqCompilerFlags;
-    }
-
-    for (const auto &i : reqCompileDefinitions)
-    {
-        if (ccpSettings.compileDefinitions)
-        {
-            if (compiler.bTFamily == BTFamily::MSVC)
-            {
-                sourceCompileCommandPrintFirstHalf += "/D " + addQuotes(i.name + "=" + addQuotes(i.value)) + " ";
-            }
-            else
-            {
-                sourceCompileCommandPrintFirstHalf += "-D" + i.name + "=" + i.value + " ";
-            }
-        }
-    }
-
-    auto getIncludeFlag = [&compiler] {
-        if (compiler.bTFamily == BTFamily::MSVC)
-        {
-            return "/I ";
-        }
-        return "-I ";
-    };
-
-    for (const InclNode &include : reqIncls)
-    {
-        if (include.isStandard)
-        {
-            if (ccpSettings.standardIncludeDirs.printLevel != PathPrintLevel::NO)
-            {
-                sourceCompileCommandPrintFirstHalf +=
-                    getIncludeFlag() + getReducedPath(include.node->filePath, ccpSettings.standardIncludeDirs) + " ";
-            }
-        }
-        else
-        {
-            if (ccpSettings.includeDirs.printLevel != PathPrintLevel::NO)
-            {
-                sourceCompileCommandPrintFirstHalf +=
-                    getIncludeFlag() + getReducedPath(include.node->filePath, ccpSettings.includeDirs) + " ";
-            }
-        }
-    }
-}
-
-string &CppSourceTarget::getSourceCompileCommandPrintFirstHalf()
-{
-    if (sourceCompileCommandPrintFirstHalf.empty())
-    {
-        setSourceCompileCommandPrintFirstHalf();
-    }
-    return sourceCompileCommandPrintFirstHalf;
-}
-
 string CppSourceTarget::getDependenciesString() const
 {
     string deps;
@@ -1485,55 +1378,6 @@ string CppSourceTarget::getInfrastructureFlags(const Compiler &compiler)
         return "-c -MMD";
     }
     return "";
-}
-
-string CppSourceTarget::getCompileCommandPrintSecondPart(const SourceNode &sourceNode) const
-{
-    const CompileCommandPrintSettings &ccpSettings = settings.ccpSettings;
-
-    const Compiler &compiler = configuration->compilerFeatures.compiler;
-    string command;
-    if (ccpSettings.infrastructureFlags)
-    {
-        command += getInfrastructureFlags(compiler) + " ";
-    }
-    if (ccpSettings.sourceFile.printLevel != PathPrintLevel::NO)
-    {
-        command += getReducedPath(sourceNode.node->filePath, ccpSettings.sourceFile) + " ";
-    }
-    if (ccpSettings.infrastructureFlags)
-    {
-        command += compiler.bTFamily == BTFamily::MSVC ? "/Fo" : "-o ";
-    }
-    return command;
-}
-
-string CppSourceTarget::getCompileCommandPrintSecondPartSMRule(const SMFile &smFile) const
-{
-    const CompileCommandPrintSettings &ccpSettings = settings.ccpSettings;
-
-    const Compiler &compiler = configuration->compilerFeatures.compiler;
-    string command;
-
-    if (ccpSettings.sourceFile.printLevel != PathPrintLevel::NO)
-    {
-        command += getReducedPath(smFile.node->filePath, ccpSettings.sourceFile) + " ";
-    }
-    if (ccpSettings.infrastructureFlags)
-    {
-        if (compiler.bTFamily == BTFamily::MSVC)
-        {
-            command += " /nologo /showIncludes /scanDependencies ";
-        }
-    }
-    if (ccpSettings.objectFile.printLevel != PathPrintLevel::NO)
-    {
-        command += getReducedPath(myBuildDir->filePath + slashc + smFile.node->getFileName() + ".smrules",
-                                  ccpSettings.objectFile) +
-                   " ";
-    }
-
-    return command;
 }
 
 bool operator<(const CppSourceTarget &lhs, const CppSourceTarget &rhs)

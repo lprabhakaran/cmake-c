@@ -1,20 +1,10 @@
 #ifndef HMAKE_LOAT_HPP
 #define HMAKE_LOAT_HPP
-#ifdef USE_HEADER_UNITS
-import "Features.hpp";
-import "HashedCommand";
-import "ObjectFile.hpp";
-import "PLOAT.hpp";
-import "RunCommand.hpp";
-import <stack>;
-#else
 #include "Features.hpp"
 #include "HashedCommand.hpp"
 #include "ObjectFile.hpp"
 #include "PLOAT.hpp"
-#include "RunCommand.hpp"
 #include <stack>
-#endif
 
 using std::stack, std::filesystem::create_directories, std::shared_ptr;
 
@@ -26,7 +16,7 @@ class LOAT : public PLOAT
   public:
     BuildCache::Link linkBuildCache;
     string reqLinkerFlags;
-    string compilationOutput;
+    string linkOutput;
     string_view linkOrArchiveCommandWithoutTargets;
     string linkOrArchiveCommandWithTargets;
     // Link Command excluding libraries(pre-built or other) that is also stored in the cache.
@@ -59,7 +49,6 @@ class LOAT : public PLOAT
 
     string getPrintName() const override;
     void setLinkOrArchiveCommands();
-    string getLinkOrArchiveCommandPrint();
     template <typename T> bool evaluate(T property) const;
 };
 
