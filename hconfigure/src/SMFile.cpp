@@ -346,7 +346,7 @@ void SourceNode::updateBuildCache(string &outputStr, string &errorStr, bool &bui
 
     if (isConsole)
     {
-        outputStr += getColorCode(ColorIndex::dark_green);
+        outputStr += getColorCode(ColorIndex::cyan);
     }
     outputStr += printCommand;
     outputStr += getThreadId();
@@ -985,7 +985,7 @@ void SMFile::updateBuildCache(string &outputStr, string &errorStr, bool &buildCa
 
     if (isConsole)
     {
-        outputStr += getColorCode(ColorIndex::dark_green);
+        outputStr += getColorCode(type == SM_FILE_TYPE::HEADER_UNIT ? ColorIndex::hot_pink : ColorIndex::magenta);
     }
     outputStr += printCommand;
     outputStr += getThreadId();

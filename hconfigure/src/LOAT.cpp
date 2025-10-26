@@ -327,7 +327,7 @@ void LOAT::updateBuildCache(void *ptr, string &outputStr, string &errorStr, bool
     {
         if (isConsole)
         {
-            outputStr += getColorCode(ColorIndex::orange);
+            outputStr += getColorCode(ColorIndex::dark_khaki);
         }
     }
     else if (linkTargetType == TargetType::EXECUTABLE || linkTargetType == TargetType::LIBRARY_SHARED)
@@ -335,7 +335,7 @@ void LOAT::updateBuildCache(void *ptr, string &outputStr, string &errorStr, bool
 
         if (isConsole)
         {
-            outputStr += getColorCode(ColorIndex::brown);
+            outputStr += getColorCode(ColorIndex::orange);
         }
     }
 

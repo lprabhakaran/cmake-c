@@ -251,6 +251,10 @@ Node *Node::getHalfNode(const string_view p)
 
 Node *Node::getHalfNode(const uint32_t index)
 {
+    if (!nodeIndices[index])
+    {
+        bool brekapoint = true;
+    }
     return nodeIndices[index];
 }
 
