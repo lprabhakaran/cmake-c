@@ -117,7 +117,7 @@ class CppSourceTarget : public ObjectFileProducerWithDS<CppSourceTarget>, public
     void initializeCppSourceTarget(const string &name_, string buildCacheFilesDirPath);
 
     void getObjectFiles(vector<const ObjectFile *> *objectFiles, LOAT *loat) const override;
-    void updateBuildCache(void *ptr, string &outputStr, string &errorStr) override;
+    void updateBuildCache(void *ptr, string &outputStr, string &errorStr, bool &buildCacheModified) override;
     void populateTransitiveProperties();
 
     void actuallyAddSourceFileConfigTime(Node *node);

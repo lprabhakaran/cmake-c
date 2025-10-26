@@ -4,7 +4,6 @@
 #include "CppSourceTarget.hpp"
 #include "Node.hpp"
 #include "TargetCache.hpp"
-#include <Windows.h>
 
 ColoredStringForPrint::ColoredStringForPrint(string _msg, const uint32_t _color, const bool _isColored)
     : msg(std::move(_msg)), color(_color), isColored(_isColored)
@@ -87,28 +86,28 @@ void CacheWriteManager::performThreadOperations(const bool doUnlockAndRelock)
             vecMutex.unlock();
         }
 
-        writeNodesCacheIfNewNodesAdded();
-
-        if (!updatedCachesLocal.empty())
+        bool buildCacheModified = false;
+        for (const UpdatedCache &p : updatedCachesLocal)
         {
-            for (const UpdatedCache &p : updatedCachesLocal)
-            {
-                p.target->updateBuildCache(p.cache, outputStr, errorStr);
-            }
+            p.target->updateBuildCache(p.cache, outputStr, errorStr, buildCacheModified);
+        }
 
+        if (buildCacheModified)
+        {
+            writeNodesCacheIfNewNodesAdded();
             writeBuildBuffer(buildBufferLocal);
             writeBufferToCompressedFile(configureNode->filePath + slashc + getFileNameJsonOrOut("build-cache"),
                                         buildBufferLocal);
         }
 
-#ifdef _WIN32
-        // Copying value from array to central value
-        DWORD written;
-        WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), outputStr.data(), (DWORD)outputStr.size(), &written, nullptr);
-#endif
+        if (!updatedCachesLocal.empty())
+        {
+            fmt::print("{}", outputStr);
+            fmt::print(stderr, "{}", errorStr);
+            outputStr.clear();
+            errorStr.clear();
+        }
 
-        outputStr.clear();
-        errorStr.clear();
         if (doUnlockAndRelock)
         {
             vecMutex.lock();

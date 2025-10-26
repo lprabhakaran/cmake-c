@@ -53,7 +53,7 @@ class SourceNode : public ObjectFile
     void parseDepsFromGCCDepsOutput();
     void parseHeaderDeps(string &output);
     void setSourceNodeFileStatus();
-    virtual void updateBuildCache(string &outputStr, string &errorStr);
+    virtual void updateBuildCache(string &outputStr, string &errorStr, bool &buildCacheModified);
 };
 
 bool operator<(const SourceNode &lhs, const SourceNode &rhs);
@@ -128,7 +128,7 @@ struct SMFile : SourceNode // Scanned Module Rule
     // In case of header-units, this check the ifc file.
     string getObjectFileOutputFilePathPrint(const PathPrint &pathPrint) const override;
     BTargetType getBTargetType() const override;
-    void updateBuildCache(string &outputStr, string &errorStr) override;
+    void updateBuildCache(string &outputStr, string &errorStr, bool &buildCacheModified) override;
     string getCompileCommand() const;
     void setFileStatusAndPopulateAllDependencies();
     string getModuleCompileCommandPrintLastHalf() const;

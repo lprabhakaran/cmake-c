@@ -310,7 +310,7 @@ void SourceNode::setSourceNodeFileStatus()
     }
 }
 
-void SourceNode::updateBuildCache(string &outputStr, string &errorStr)
+void SourceNode::updateBuildCache(string &outputStr, string &errorStr, bool &buildCacheModified)
 {
     const Compiler &compiler = target->configuration->compilerFeatures.compiler;
     BuildCache::Cpp::SourceFile &buildCache = target->cppBuildCache.srcFiles[indexInBuildCache];
@@ -319,6 +319,7 @@ void SourceNode::updateBuildCache(string &outputStr, string &errorStr)
     // because cached compile-command would be different
     if (realBTargets[0].exitStatus == EXIT_SUCCESS)
     {
+        buildCacheModified = true;
         buildCache.compileCommandWithTool.hash = target->compileCommandWithTool.getHash();
         parseHeaderDeps(compilationOutput);
         buildCache.headerFiles.clear();
@@ -921,10 +922,11 @@ BTargetType SMFile::getBTargetType() const
     return BTargetType::SMFILE;
 }
 
-void SMFile::updateBuildCache(string &outputStr, string &errorStr)
+void SMFile::updateBuildCache(string &outputStr, string &errorStr, bool &buildCacheModified)
 {
     if (realBTargets[0].exitStatus == EXIT_SUCCESS)
     {
+        buildCacheModified = true;
         smRulesCache = BuildCache::Cpp::ModuleFile::SmRules{};
         smRulesCache.headerStatusChanged = false;
         for (const SMFile *smFile : allSMFileDependencies)

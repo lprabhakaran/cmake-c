@@ -309,10 +309,11 @@ void LOAT::updateBTarget(Builder &builder, const unsigned short round, bool &isC
     }
 }
 
-void LOAT::updateBuildCache(void *ptr, string &outputStr, string &errorStr)
+void LOAT::updateBuildCache(void *ptr, string &outputStr, string &errorStr, bool &buildCacheModified)
 {
     if (realBTargets[0].exitStatus == EXIT_SUCCESS)
     {
+        buildCacheModified = true;
         linkBuildCache.commandWithoutArgumentsWithTools.hash = commandWithoutTargetsWithTool.getHash();
         linkBuildCache.objectFiles.reserve(objectFiles.size());
         linkBuildCache.objectFiles.clear();
@@ -326,7 +327,7 @@ void LOAT::updateBuildCache(void *ptr, string &outputStr, string &errorStr)
     {
         if (isConsole)
         {
-            outputStr += getColorCode(ColorIndex::light_gray);
+            outputStr += getColorCode(ColorIndex::orange);
         }
     }
     else if (linkTargetType == TargetType::EXECUTABLE || linkTargetType == TargetType::LIBRARY_SHARED)

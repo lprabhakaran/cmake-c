@@ -52,7 +52,7 @@ class LOAT : public PLOAT
 
     void setFileStatus();
     void updateBTarget(Builder &builder, unsigned short round, bool &isComplete) override;
-    void updateBuildCache(void *ptr, string &outputStr, string &errorStr) override;
+    void updateBuildCache(void *ptr, string &outputStr, string &errorStr, bool &buildCacheModified) override;
     void writeBuildCache(vector<char> &buffer) override;
     void writeCacheAtConfigureTime();
     void readCacheAtBuildTime();
