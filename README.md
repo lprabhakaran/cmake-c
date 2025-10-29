@@ -1,4 +1,4 @@
-# HMake
+# HMake test
 
 HMake is a new build system that does not invent a new DSL for its project build specification.
 Currently, it only provides C++ build and C++ API.
