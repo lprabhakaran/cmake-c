@@ -1,3 +1,4 @@
+#snyk sca test
 # HMake test test
 
 HMake is a new build system that does not invent a new DSL for its project build specification.
